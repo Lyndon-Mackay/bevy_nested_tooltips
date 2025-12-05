@@ -17,7 +17,7 @@ use bevy_ecs::{
 
 use bevy_ecs::spawn::SpawnRelated;
 
-use bevy_log::{error, info};
+use bevy_log::error;
 use bevy_math::{Rect, Vec2};
 use bevy_picking::{
     Pickable,
@@ -36,10 +36,7 @@ use tiny_bail::prelude::*;
 
 use crate::{
     events::{TooltipHighlighting, TooltipLocked},
-    text_observer::{
-        TextHoveredOut, TextHoveredOver, TextObservePlugin, WasHoveringText,
-        highlight_link_textspan_parent, term_link_textspan_parent,
-    },
+    text_observer::{TextHoveredOut, TextHoveredOver, TextObservePlugin, WasHoveringText},
 };
 
 pub mod events;
@@ -53,7 +50,7 @@ impl Plugin for NestedTooltipPlugin {
             .init_resource::<TooltipConfiguration>()
             .init_resource::<TooltipReference>()
             .add_systems(PreStartup, setup_component_hooks)
-            .add_systems(Update, spawn_hover_tick)
+            .add_systems(Update, tick_timers)
             .add_observer(spawn_time_done);
     }
 }
@@ -65,7 +62,7 @@ pub struct TooltipConfiguration {
     activation_method: ActivationMethod,
 
     /// Maximum amount of time the `ToolTip` will remain around without user interaction
-    interaction_time: Duration,
+    interaction_wait_for_time: Duration,
 
     /// The starting z_index this will be incremented for each recursive tooltip
     /// increase this if tooltips are not on top and you want to fix that
@@ -76,7 +73,7 @@ impl Default for TooltipConfiguration {
     fn default() -> Self {
         Self {
             activation_method: Default::default(),
-            interaction_time: Duration::from_secs_f64(2.3),
+            interaction_wait_for_time: Duration::from_secs_f64(0.5),
             starting_z_index: 3,
         }
     }
@@ -159,7 +156,7 @@ pub struct TooltipSpawned {
 /// If the user hasn't hovered on the tooltip in the specified time despawn it
 /// time is configured in `TooltipConfiguration`
 #[derive(Debug, Component)]
-pub struct ToolTipHoverTimer {
+pub struct TooltipWaitForHover {
     timer: Timer,
 }
 
@@ -366,10 +363,20 @@ struct SpawnLinksQuery {
     spawn_timer: &'static mut TooltipLinkTimer,
 }
 
-/// Tick timers and if they finish spawn the releveant tooltip
-fn spawn_hover_tick(
+#[derive(QueryData)]
+#[query_data(mutable)]
+struct HoverWaitQuery {
+    entity: Entity,
+    tooltip: &'static Tooltip,
+    wait_for: &'static mut TooltipWaitForHover,
+}
+
+/// Tick timers and if they finish spawn/despawn the releveant tooltip
+fn tick_timers(
     mut links_query: Query<SpawnLinksQuery>,
+    mut wait_for_query: Query<HoverWaitQuery>,
     time_res: Res<Time>,
+    hover: Option<Res<WasHoveringText>>,
     mut commands: Commands,
 ) {
     for mut links_item in &mut links_query {
@@ -379,6 +386,19 @@ fn spawn_hover_tick(
                 term_entity: links_item.entity,
             });
             c!(commands.get_entity(links_item.entity)).remove::<TooltipLinkTimer>();
+        }
+    }
+    for mut wait_for_item in &mut wait_for_query {
+        match hover {
+            Some(ref current) if current.entity == wait_for_item.tooltip.entity => {
+                wait_for_item.wait_for.timer.reset();
+            }
+            _ => {
+                wait_for_item.wait_for.timer.tick(time_res.delta());
+                if wait_for_item.wait_for.timer.is_finished() {
+                    c!(commands.get_entity(wait_for_item.entity)).try_despawn();
+                }
+            }
         }
     }
 }
@@ -435,13 +455,16 @@ fn hover_debounce(
     };
 
     if bounds.contains(normalised) {
-        r!(commands.get_entity(hover.entity)).insert(ToolTipDebounced);
+        r!(commands.get_entity(hover.entity))
+            .insert(ToolTipDebounced)
+            .remove::<TooltipWaitForHover>();
     }
 }
 
 #[derive(QueryData)]
 struct TooltipQuery {
     tooltip: &'static Tooltip,
+    relative_cursor: &'static RelativeCursorPosition,
     has_nested: Has<TooltipsNested>,
     locked: Has<TooltipLocked>,
     debounced: Has<ToolTipDebounced>,
@@ -459,8 +482,10 @@ fn hover_despawn(
     if tooltip_item.has_nested || tooltip_item.locked || !tooltip_item.debounced {
         return;
     }
-    info!("out");
 
+    if tooltip_item.relative_cursor.cursor_over {
+        return;
+    }
     r!(commands.get_entity(hover.entity)).despawn();
 }
 
@@ -550,8 +575,11 @@ fn spawn_tooltip(
         Tooltip {
             entity: term_entity,
         },
-        ToolTipHoverTimer {
-            timer: Timer::new(tooltip_configuration.interaction_time, TimerMode::Once),
+        TooltipWaitForHover {
+            timer: Timer::new(
+                tooltip_configuration.interaction_wait_for_time,
+                TimerMode::Once,
+            ),
         },
         zindex,
         Pickable {
