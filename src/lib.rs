@@ -17,24 +17,28 @@ use bevy_ecs::{
 
 use bevy_ecs::spawn::SpawnRelated;
 
-use bevy_log::error;
+use bevy_log::{error, info};
+use bevy_math::{Rect, Vec2};
 use bevy_picking::{
     Pickable,
-    events::{Out, Over, Pointer, Press},
+    events::{Move, Out, Over, Pointer, Press},
     pointer::PointerButton,
 };
 use bevy_platform::collections::HashMap;
 use bevy_text::TextSpan;
 use bevy_time::{Time, Timer, TimerMode};
-use bevy_ui::{Display, GlobalZIndex, GridAutoFlow, Node, PositionType, UiRect, Val, widget::Text};
+use bevy_ui::{
+    Display, GlobalZIndex, GridAutoFlow, Node, PositionType, RelativeCursorPosition, UiRect, Val,
+    widget::Text,
+};
 use bevy_window::Window;
 use tiny_bail::prelude::*;
 
 use crate::{
     events::{TooltipHighlighting, TooltipLocked},
     text_observer::{
-        TextHoveredOut, TextHoveredOver, TextObservePlugin, highlight_link_textspan_parent,
-        term_link_textspan_parent,
+        TextHoveredOut, TextHoveredOver, TextObservePlugin, WasHoveringText,
+        highlight_link_textspan_parent, term_link_textspan_parent,
     },
 };
 
@@ -126,9 +130,26 @@ impl Default for TooltipReference {
     }
 }
 
-/// Marker to indicate this Entity is a Tooltip
+/// Indicates this entity is a tooltip and stores what spawned it
+/// The entity that spawned it is blocked from spawning another tooltip
+/// until this one is finished to prevent tooltip jumping around
 #[derive(Debug, Component)]
-pub struct Tooltip;
+#[require(RelativeCursorPosition)]
+pub struct Tooltip {
+    entity: Entity,
+}
+
+impl Tooltip {
+    /// The entity that spawned this tooltip
+    pub fn entity(&self) -> Entity {
+        self.entity
+    }
+}
+
+/// When the cursor has gotten sufficently inside the tooltip
+/// leaving will now despawn this tooltip
+#[derive(Debug, Component)]
+struct ToolTipDebounced;
 
 #[derive(Debug, EntityEvent)]
 pub struct TooltipSpawned {
@@ -269,7 +290,6 @@ fn setup_component_hooks(world: &mut World) {
         .register_component_hooks::<TooltipHighlightLink>()
         .on_insert(|mut world, HookContext { entity, .. }| {
             r!(world.commands().get_entity(entity))
-                .observe(highlight_link_textspan_parent)
                 .observe(highlight_activate)
                 .observe(highlight_deactivate);
         });
@@ -280,11 +300,9 @@ fn setup_component_hooks(world: &mut World) {
             world
                 .commands()
                 .entity(entity)
-                .observe(term_link_textspan_parent)
                 .observe(middle_mouse_spawn)
                 .observe(hover_time_spawn)
-                .observe(hover_cancel_spawn)
-                .observe(hover_despawn);
+                .observe(hover_cancel_spawn);
         });
 
     world
@@ -295,13 +313,17 @@ fn setup_component_hooks(world: &mut World) {
                 .entity(entity)
                 .observe(middle_mouse_spawn)
                 .observe(hover_time_spawn)
-                .observe(hover_cancel_spawn)
-                .observe(hover_despawn);
+                .observe(hover_cancel_spawn);
         });
 
     world.register_component_hooks::<Tooltip>().on_insert(
         |mut world, HookContext { entity, .. }| {
-            world.commands().entity(entity).observe(lock_tooltip);
+            world
+                .commands()
+                .entity(entity)
+                .observe(lock_tooltip)
+                .observe(hover_debounce)
+                .observe(hover_despawn);
         },
     );
 }
@@ -366,13 +388,14 @@ fn spawn_hover_tick(
 fn spawn_time_done(
     term: On<TooltipLinkTimeElapsed>,
     links_query: Query<AnyOf<(&TooltipTermLink, &TooltipTermLinkRecursive)>>,
-    existing_tooltips_query: Query<Entity, With<Tooltip>>,
+    existing_tooltips_query: Query<(Entity, &Tooltip)>,
     window_query: Query<&Window>,
     tooltips_map: Res<TooltipMap>,
     tooltip_reference: Res<TooltipReference>,
     tooltip_configuration: Res<TooltipConfiguration>,
     mut commands: Commands,
 ) {
+    commands.remove_resource::<WasHoveringText>();
     spawn_tooltip(
         term.term_entity,
         links_query,
@@ -386,10 +409,42 @@ fn spawn_time_done(
 }
 
 #[derive(QueryData)]
+struct TooltipDebounceQuery {
+    tooltip: &'static Tooltip,
+    debounced: Has<ToolTipDebounced>,
+    cursor: &'static RelativeCursorPosition,
+}
+
+/// This is to debounce the cursor when it lands on the
+/// tooltip, without this it is too easy to accidentally
+/// close the tooltip
+fn hover_debounce(
+    hover: On<Pointer<Move>>,
+    tooltip_query: Query<TooltipDebounceQuery>,
+    mut commands: Commands,
+) {
+    const DEBOUNCE_DIST: f32 = 0.48;
+    let tooltip_item = r!(tooltip_query.get(hover.entity));
+    if tooltip_item.debounced {
+        return;
+    }
+    let normalised = rq!(tooltip_item.cursor.normalized);
+    let bounds = Rect {
+        min: Vec2::new(-DEBOUNCE_DIST, -DEBOUNCE_DIST),
+        max: Vec2::new(DEBOUNCE_DIST, DEBOUNCE_DIST),
+    };
+
+    if bounds.contains(normalised) {
+        r!(commands.get_entity(hover.entity)).insert(ToolTipDebounced);
+    }
+}
+
+#[derive(QueryData)]
 struct TooltipQuery {
     tooltip: &'static Tooltip,
     has_nested: Has<TooltipsNested>,
     locked: Has<TooltipLocked>,
+    debounced: Has<ToolTipDebounced>,
 }
 
 /// When user mouses out of `ToolTip` despawn it unless it has a nested tooltip
@@ -401,9 +456,10 @@ fn hover_despawn(
     let tooltip_item = r!(tooltip_query.get(hover.entity));
 
     // despawns occur at nested level
-    if tooltip_item.has_nested || tooltip_item.locked {
+    if tooltip_item.has_nested || tooltip_item.locked || !tooltip_item.debounced {
         return;
     }
+    info!("out");
 
     r!(commands.get_entity(hover.entity)).despawn();
 }
@@ -413,7 +469,7 @@ fn hover_despawn(
 fn middle_mouse_spawn(
     press: On<Pointer<Press>>,
     links_query: Query<AnyOf<(&TooltipTermLink, &TooltipTermLinkRecursive)>>,
-    existing_tooltips_query: Query<Entity, With<Tooltip>>,
+    existing_tooltips_query: Query<(Entity, &Tooltip)>,
     window_query: Query<&Window>,
     tooltips_map: Res<TooltipMap>,
     tooltip_reference: Res<TooltipReference>,
@@ -438,17 +494,25 @@ fn middle_mouse_spawn(
 }
 
 /// Common logic to spawn `ToolTip` should be called when activation method has been satisfied
+/// This also blocks tooltips from spawning if entity has already spawned one
 #[allow(clippy::too_many_arguments)]
 fn spawn_tooltip(
     term_entity: Entity,
     links_query: Query<'_, '_, AnyOf<(&TooltipTermLink, &TooltipTermLinkRecursive)>>,
-    existing_tooltips_query: Query<Entity, With<Tooltip>>,
+    existing_tooltips_query: Query<(Entity, &Tooltip)>,
     window_query: Query<'_, '_, &Window>,
     tooltips_map: Res<'_, TooltipMap>,
     tooltip_reference: Res<'_, TooltipReference>,
     tooltip_configuration: Res<TooltipConfiguration>,
     commands: &mut Commands<'_, '_>,
 ) {
+    // Prevent the same entity having two existing tooltips spawned
+    for (_, tooltip) in existing_tooltips_query {
+        if tooltip.entity == term_entity {
+            return;
+        }
+    }
+
     let link_item = r!(links_query.get(term_entity));
     let (tooltip_term, nested) = match link_item {
         // Guranteed to have at least one entity
@@ -468,7 +532,7 @@ fn spawn_tooltip(
     // Despawn other top level `ToolTip`s
     let zindex = match nested {
         None => {
-            for entity in existing_tooltips_query {
+            for (entity, _) in existing_tooltips_query {
                 c!(commands.get_entity(entity)).try_despawn();
             }
             GlobalZIndex(tooltip_configuration.starting_z_index)
@@ -483,7 +547,9 @@ fn spawn_tooltip(
 
     let mut tooltip_commands = commands.spawn((
         design_node,
-        Tooltip,
+        Tooltip {
+            entity: term_entity,
+        },
         ToolTipHoverTimer {
             timer: Timer::new(tooltip_configuration.interaction_time, TimerMode::Once),
         },

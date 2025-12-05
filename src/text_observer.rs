@@ -148,7 +148,13 @@ fn tooltip_links(
 ) {
     //If we were hovering a text section then check if we still are
     if let Some(hovered) = was_hovering {
-        let links_item = r!(tooltip_links_query.get(hovered.relative_cursor_entity));
+        let links_item = match tooltip_links_query.get(hovered.relative_cursor_entity) {
+            Ok(item) => item,
+            Err(_) => {
+                commands.remove_resource::<WasHoveringText>();
+                return;
+            }
+        };
         let relative = links_item.relative_cursor;
         let ui_node = links_item.compute_node;
         let text_layout = links_item.text_layout_info;
