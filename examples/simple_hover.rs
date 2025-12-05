@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, WHITE, YELLOW_GREEN};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
-    NestedTooltipPlugin, Tooltip, TooltipHighlightText, TooltipMap, TooltipSpawned,
-    TooltipTermLink, TooltipTermText, TooltipTitleNode, TooltipTitleText, TooltipsContent,
+    NestedTooltipPlugin, Tooltip, TooltipHighlight, TooltipHighlightText, TooltipMap,
+    TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode, TooltipTitleText,
+    TooltipsContent, events::TooltipHighlighting,
 };
 use bevy_platform::collections::HashMap;
 use bevy_ui::RelativeCursorPosition;
@@ -19,12 +20,15 @@ fn main() -> AppExit {
         .add_observer(title_font)
         .add_observer(term_font)
         .add_observer(query_style)
+        .add_observer(add_highlight)
+        .add_observer(remove_highlight)
         .run()
 }
 
 fn spawn_scene(mut commands: Commands) {
     commands.spawn(Camera2d);
 
+    edge_panels(&mut commands);
     let interaction_screen = Node {
         left: Val::Percent(30.),
         top: Val::Percent(30.),
@@ -105,6 +109,22 @@ fn spawn_scene(mut commands: Commands) {
     commands.insert_resource(tooltip_map);
 }
 
+fn edge_panels(commands: &mut Commands) {
+    let left_node = Node {
+        left: percent(0),
+        top: percent(0),
+        bottom: auto(),
+        width: percent(5),
+        height: percent(100),
+        ..Default::default()
+    };
+    commands.spawn((
+        left_node,
+        BackgroundColor(BLUE.into()),
+        TooltipHighlight("sides".into()),
+    ));
+}
+
 // This is how you style a tooltip!
 // If you want to change the default node consider using TooltipReference
 fn style_tooltip(tooltip: On<Add, Tooltip>, mut commands: Commands) {
@@ -160,4 +180,22 @@ fn query_style(
             return;
         }
     }
+}
+
+// When highlighted change the colour, how you highlight is up to you
+fn add_highlight(side: On<Add, TooltipHighlighting>, mut commands: Commands) {
+    // info!("style");
+    commands
+        .get_entity(side.entity)
+        .unwrap()
+        .insert(BackgroundColor(GREEN.into()));
+}
+
+// remove highlighting
+fn remove_highlight(side: On<Remove, TooltipHighlighting>, mut commands: Commands) {
+    // info!("style");
+    commands
+        .get_entity(side.entity)
+        .unwrap()
+        .insert(BackgroundColor(BLUE.into()));
 }

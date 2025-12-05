@@ -683,13 +683,14 @@ struct HighlightNodesQuery {
 /// When text that highlights a node is moused over this will add a marker component
 /// to the user so they can then apply highlighting logic
 fn highlight_activate(
-    hover: On<Pointer<Over>, TooltipHighlightLink>,
+    hover: On<TextHoveredOver>,
     highlight_nodes_link_query: Query<&TooltipHighlightLink>,
     highlight_nodes_query: Query<HighlightNodesQuery>,
     mut commands: Commands,
 ) {
     let link = r!(highlight_nodes_link_query.get(hover.entity)).0.clone();
 
+    // info!("in {link} {}", highlight_nodes_query.count());
     for node in highlight_nodes_query
         .iter()
         .filter(|x| x.tooltip_highlight.0 == link)
@@ -701,7 +702,7 @@ fn highlight_activate(
 /// When text that highlights a node is no longer moused over this will add a marker component
 /// to the user so they can then remove highlighting logic
 fn highlight_deactivate(
-    hover: On<Pointer<Out>, TooltipHighlightLink>,
+    hover: On<TextHoveredOut>,
     highlight_nodes_link_query: Query<&TooltipHighlightLink>,
     highlight_nodes_query: Query<HighlightNodesQuery, With<TooltipHighlighting>>,
     mut commands: Commands,

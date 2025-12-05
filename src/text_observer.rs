@@ -195,6 +195,16 @@ fn tooltip_links(
             && let Some(norm) = relative.normalized
         {
             let adjusted_cursor_position = ui_node.size() / 2. + norm * ui_node.size();
+            // info!("{:?}", adjusted_cursor_position);
+
+            // info!(
+            //     "{:?}",
+            //     text_layout
+            //         .section_rects
+            //         .iter()
+            //         .enumerate()
+            //         .find(|(_, rect)| rect.1.contains(adjusted_cursor_position))
+            // );
 
             if let Some((hovered_entity, _)) = text_layout
                 .section_rects
