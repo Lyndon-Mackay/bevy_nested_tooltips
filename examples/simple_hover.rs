@@ -6,6 +6,7 @@ use bevy_nested_tooltips::{
     TooltipTermLink, TooltipTermText, TooltipTitleNode, TooltipTitleText, TooltipsContent,
 };
 use bevy_platform::collections::HashMap;
+use bevy_ui::RelativeCursorPosition;
 
 fn main() -> AppExit {
     App::new()
@@ -61,7 +62,18 @@ fn spawn_scene(mut commands: Commands) {
                     ..Default::default()
                 },
                 BackgroundColor(YELLOW_GREEN.into()),
-                children![(Text::new("ToolTip"), TooltipTermLink::new("tooltip"))]
+                children![(
+                    Text::new("I am a "),
+                    RelativeCursorPosition::default(),
+                    children![
+                        (
+                            TextSpan::new("ToolTip"),
+                            TooltipTermLink::new("tooltip"),
+                            TextColor(BLUE.into())
+                        ),
+                        TextSpan::new(" hover over it!")
+                    ]
+                )]
             )
         ],
     ));

@@ -1,30 +1,46 @@
 //! `TextSpan`'s do not currently support observers so this file is here to read hovers on text
 //! and to narrow it down to the actual textspan.
 
+use bevy_app::{Plugin, Update};
 use bevy_ecs::{
+    component::Component,
     entity::Entity,
     event::EntityEvent,
-    query::{AnyOf, Or, With, Without},
+    hierarchy::ChildOf,
+    lifecycle::Add,
+    observer::On,
+    query::{Or, QueryData, With, Without},
     resource::Resource,
     system::{Commands, Query, Res},
 };
-use bevy_log::info;
-use bevy_math::Rect;
 use bevy_text::TextLayoutInfo;
-use bevy_ui::UiGlobalTransform;
-use bevy_window::Window;
+use bevy_ui::{ComputedNode, RelativeCursorPosition, widget::Text};
 use tiny_bail::prelude::*;
 
-use crate::{
-    TooltipHighlightLink, TooltipTermLink, TooltipTermLinkRecursive, TooltipTextNode,
-    TooltipsNested,
-};
+use crate::{TooltipHighlightLink, TooltipTermLink, TooltipTermLinkRecursive, TooltipsNested};
+
+/// Plugin to bridge gap until text spans support observers
+pub(crate) struct TextObservePlugin;
+
+impl Plugin for TextObservePlugin {
+    fn build(&self, app: &mut bevy_app::App) {
+        app.add_systems(Update, tooltip_links)
+            .add_observer(term_link_textspan_parent)
+            .add_observer(recursive_term_link_textspan_parent)
+            .add_observer(highlight_link_textspan_parent);
+    }
+}
 
 /// Used to track for hovering when resource is present mouse was located
 /// on the rect last frame
 #[derive(Resource, Clone, Copy)]
 pub(crate) struct WasHoveringText {
+    /// Actual entity that we hovered
     pub(crate) entity: Entity,
+    /// Entity which holds relative cursor this will be
+    /// different from actual hovered entity in the case
+    /// of text spans
+    pub(crate) relative_cursor_entity: Entity,
 }
 
 /// Term has been hovered in the tooltip
@@ -39,118 +55,156 @@ pub(crate) struct TextHoveredOut {
     pub(crate) entity: Entity,
 }
 
+/// This is to mark text as having a textspan that contains a link
+/// RelativeCursorPosition and observers do not work with textspan
+/// So will listen to parent instead and check the span
+///
+#[derive(Component, Debug)]
+#[require(RelativeCursorPosition)]
+pub(crate) struct ToolTipListenTextSpan;
+
+pub(crate) fn highlight_link_textspan_parent(
+    add: On<Add, TooltipHighlightLink>,
+    text_query: Query<Entity, With<Text>>,
+    ancestor_query: Query<&ChildOf>,
+    mut commands: Commands,
+) {
+    // Can already listen to text so no need to do anything else
+    if text_query.contains(add.entity) {
+        r!(commands.get_entity(add.entity)).insert(RelativeCursorPosition::default());
+        return;
+    }
+    for entity in ancestor_query.iter_ancestors(add.entity) {
+        if text_query.contains(entity) {
+            r!(commands.get_entity(entity)).insert(ToolTipListenTextSpan);
+            return;
+        }
+    }
+}
+
+pub(crate) fn term_link_textspan_parent(
+    add: On<Add, TooltipTermLink>,
+    text_query: Query<Entity, With<Text>>,
+    ancestor_query: Query<&ChildOf>,
+    mut commands: Commands,
+) {
+    // Can already listen to text so no need to do anything else
+    if text_query.contains(add.entity) {
+        r!(commands.get_entity(add.entity)).insert(RelativeCursorPosition::default());
+        return;
+    }
+    for entity in ancestor_query.iter_ancestors(add.entity) {
+        if text_query.contains(entity) {
+            r!(commands.get_entity(entity)).insert(ToolTipListenTextSpan);
+            return;
+        }
+    }
+}
+
+pub(crate) fn recursive_term_link_textspan_parent(
+    add: On<Add, TooltipTermLinkRecursive>,
+    text_query: Query<Entity, With<Text>>,
+    ancestor_query: Query<&ChildOf>,
+    mut commands: Commands,
+) {
+    // Can already listen to text so no need to do anything else
+    if text_query.contains(add.entity) {
+        r!(commands.get_entity(add.entity)).insert(RelativeCursorPosition::default());
+        return;
+    }
+    for entity in ancestor_query.iter_ancestors(add.entity) {
+        if text_query.contains(entity) {
+            r!(commands.get_entity(entity)).insert(ToolTipListenTextSpan);
+            return;
+        }
+    }
+}
+
+#[derive(QueryData)]
+struct TooltipLinksQuery {
+    entity: Entity,
+    text_layout_info: &'static TextLayoutInfo,
+    compute_node: &'static ComputedNode,
+    relative_cursor: &'static RelativeCursorPosition,
+}
+
 /// Check with the topmost tooltip and see if any text is hovered
 #[allow(clippy::type_complexity)]
-pub(crate) fn hover_text_span(
-    // We look in toop most tooltip first
-    layout_info_query: Query<&TextLayoutInfo, (With<TooltipTextNode>, Without<TooltipsNested>)>,
+fn tooltip_links(
     //If we don't find anything in top most tooltip we search top level link
-    non_tooltip_info_query: Query<
-        (&TextLayoutInfo, &UiGlobalTransform),
+    tooltip_links_query: Query<
+        TooltipLinksQuery,
         (
-            Without<TooltipTextNode>,
-            Or<(With<TooltipTermLink>, With<TooltipHighlightLink>)>,
+            Without<TooltipsNested>,
+            Or<(
+                With<TooltipTermLink>,
+                With<TooltipHighlightLink>,
+                With<ToolTipListenTextSpan>,
+            )>,
         ),
     >,
-    activated_text_query: Query<
-        AnyOf<(
-            &TooltipTermLink,
-            &TooltipTermLinkRecursive,
-            &TooltipHighlightLink,
-        )>,
-    >,
-    windows_query: Query<&Window>,
     was_hovering: Option<Res<WasHoveringText>>,
     mut commands: Commands,
 ) {
-    let window = r!(windows_query.single());
-    let cursor = rq!(window.cursor_position());
-
     //If we were hovering a text section then check if we still are
     if let Some(hovered) = was_hovering {
-        if let Ok(text_layout) = layout_info_query.get(hovered.entity)
-            && let Some(rect) = text_layout
+        let links_item = r!(tooltip_links_query.get(hovered.relative_cursor_entity));
+        let relative = links_item.relative_cursor;
+        let ui_node = links_item.compute_node;
+        let text_layout = links_item.text_layout_info;
+
+        match relative.normalized {
+            Some(norm) => {
+                let adjusted_cursor_position = ui_node.size() / 2. + norm * ui_node.size();
+                if let Some(rect) = text_layout
+                    .section_rects
+                    .iter()
+                    .find(|rect| rect.1.contains(adjusted_cursor_position))
+                {
+                    if rect.0 != hovered.entity {
+                        commands.remove_resource::<WasHoveringText>();
+                        commands.trigger(TextHoveredOut {
+                            entity: hovered.entity,
+                        });
+                    }
+                    return;
+                }
+            }
+            None => {
+                commands.remove_resource::<WasHoveringText>();
+                commands.trigger(TextHoveredOut {
+                    entity: hovered.entity,
+                });
+                return;
+            }
+        }
+    }
+
+    for links_item in tooltip_links_query {
+        let entity = links_item.entity;
+        let relative = links_item.relative_cursor;
+        let ui_node = links_item.compute_node;
+        let text_layout = links_item.text_layout_info;
+        if relative.cursor_over
+            && let Some(norm) = relative.normalized
+        {
+            let adjusted_cursor_position = ui_node.size() / 2. + norm * ui_node.size();
+
+            if let Some((hovered_entity, _)) = text_layout
                 .section_rects
                 .iter()
-                .find(|s| s.0 == hovered.entity)
-            && rect.1.contains(cursor)
-        {
-            return;
-            // Do nothing we still hovering
-        } else {
-            commands.remove_resource::<WasHoveringText>();
-            commands.trigger(TextHoveredOut {
-                entity: hovered.entity,
-            });
-
-            // Hovered out now lets see if we hovered into anything else
-        }
-    }
-
-    // check if we hovered on text section
-    for text_layout in layout_info_query {
-        let hovering = cq!(text_layout
-            .section_rects
-            .iter()
-            .find(|x| x.1.contains(cursor)))
-        .0;
-        if activated_text_query.contains(hovering) {
-            commands.trigger(TextHoveredOver { entity: hovering });
-            commands.insert_resource(WasHoveringText { entity: hovering });
-            // match selected_text_spans {
-            //     (None, None, None) => {
-            //         error!("Bevy invariant not upheld");
-            //         return;
-            //     }
-            //     (None, None, Some(_)) => {
-            //         commands.trigger(TextHoveredOver { entity: hovering });
-            //         commands.insert_resource(WasHoveringText { entity: hovering });
-            //         return;
-            //     }
-            //     (None, Some(_), None) => {
-            //         commands.trigger(TextHoveredOver { entity: hovering });
-            //         commands.insert_resource(WasHoveringText { entity: hovering });
-            //         return;
-            //     }
-            //     (Some(_), None, None) => {
-            //         commands.trigger(TextHoveredOver { entity: hovering });
-            //         commands.insert_resource(WasHoveringText { entity: hovering });
-            //         return;
-            //     }
-
-            //     a => {
-            //         error!("Highlight and term at the same time not support {a:?}");
-            //         return;
-            //     }
-            // }
-        }
-    }
-
-    for (text_layout, uiglobal) in non_tooltip_info_query {
-        // bevy_log::info!("try");
-
-        bevy_log::info!("{:?}", cursor);
-        bevy_log::info!("{:?}", text_layout.section_rects);
-        // bevy_log::info!("{:?}", text_layout.glyphs);
-        // bevy_log::info!("{:?}", transform.translation);
-
-        // let cursor = cursor * (1. / text_layout.scale_factor);
-        let hovering = cq!(text_layout.section_rects.iter().find(|x| {
-            let min = uiglobal.transform_point2(x.1.min);
-            let max = uiglobal.transform_point2(x.1.max);
-            Rect { min, max }.contains(cursor)
-        }))
-        .0;
-        // let hovering = cq!(text_layout
-        //     .section_rects
-        //     .iter()
-        //     .find(|x| x.1.contains(cursor)))
-        // .0;
-
-        if activated_text_query.contains(hovering) {
-            info!("got it");
-            commands.trigger(TextHoveredOver { entity: hovering });
-            commands.insert_resource(WasHoveringText { entity: hovering });
+                .find(|rect| rect.1.contains(adjusted_cursor_position))
+                .copied()
+            {
+                commands.trigger(TextHoveredOver {
+                    entity: hovered_entity,
+                });
+                commands.insert_resource(WasHoveringText {
+                    entity: hovered_entity,
+                    relative_cursor_entity: entity,
+                });
+                return;
+            }
         }
     }
 }

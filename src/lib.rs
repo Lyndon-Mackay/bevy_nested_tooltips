@@ -17,7 +17,7 @@ use bevy_ecs::{
 
 use bevy_ecs::spawn::SpawnRelated;
 
-use bevy_log::{error, info};
+use bevy_log::error;
 use bevy_picking::{
     Pickable,
     events::{Out, Over, Pointer, Press},
@@ -32,7 +32,10 @@ use tiny_bail::prelude::*;
 
 use crate::{
     events::{TooltipHighlighting, TooltipLocked},
-    text_observer::{TextHoveredOut, TextHoveredOver, hover_text_span},
+    text_observer::{
+        TextHoveredOut, TextHoveredOver, TextObservePlugin, highlight_link_textspan_parent,
+        term_link_textspan_parent,
+    },
 };
 
 pub mod events;
@@ -42,11 +45,11 @@ pub struct NestedTooltipPlugin;
 
 impl Plugin for NestedTooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.init_resource::<TooltipConfiguration>()
+        app.add_plugins(TextObservePlugin)
+            .init_resource::<TooltipConfiguration>()
             .init_resource::<TooltipReference>()
             .add_systems(PreStartup, setup_component_hooks)
             .add_systems(Update, spawn_hover_tick)
-            .add_systems(Update, hover_text_span)
             .add_observer(spawn_time_done);
     }
 }
@@ -262,11 +265,11 @@ pub enum TooltipsContent {
 /// I do not clean up the observers if the component is removed
 /// I only anticipate this happening with despawn
 fn setup_component_hooks(world: &mut World) {
-    info!("hooks");
     world
         .register_component_hooks::<TooltipHighlightLink>()
         .on_insert(|mut world, HookContext { entity, .. }| {
             r!(world.commands().get_entity(entity))
+                .observe(highlight_link_textspan_parent)
                 .observe(highlight_activate)
                 .observe(highlight_deactivate);
         });
@@ -274,10 +277,10 @@ fn setup_component_hooks(world: &mut World) {
     world
         .register_component_hooks::<TooltipTermLink>()
         .on_insert(|mut world, HookContext { entity, .. }| {
-            info!("hook on");
             world
                 .commands()
                 .entity(entity)
+                .observe(term_link_textspan_parent)
                 .observe(middle_mouse_spawn)
                 .observe(hover_time_spawn)
                 .observe(hover_cancel_spawn)
@@ -287,7 +290,6 @@ fn setup_component_hooks(world: &mut World) {
     world
         .register_component_hooks::<TooltipTermLinkRecursive>()
         .on_insert(|mut world, HookContext { entity, .. }| {
-            info!("recursive hook");
             world
                 .commands()
                 .entity(entity)
@@ -418,7 +420,6 @@ fn middle_mouse_spawn(
     tooltip_configuration: Res<TooltipConfiguration>,
     mut commands: Commands,
 ) {
-    info!("middle");
     let current_activation = tooltip_configuration.activation_method.clone();
     if press.button == PointerButton::Middle
         && matches!(current_activation, ActivationMethod::Hover { .. })
@@ -448,7 +449,6 @@ fn spawn_tooltip(
     tooltip_configuration: Res<TooltipConfiguration>,
     commands: &mut Commands<'_, '_>,
 ) {
-    info!("spawn");
     let link_item = r!(links_query.get(term_entity));
     let (tooltip_term, nested) = match link_item {
         // Guranteed to have at least one entity
@@ -456,10 +456,7 @@ fn spawn_tooltip(
             error!("Bevy invariant failed");
             return;
         }
-        (None, Some(s)) => {
-            info!("recursive trigger");
-            (s.linked_string.clone(), Some(s.parent_entity))
-        }
+        (None, Some(s)) => (s.linked_string.clone(), Some(s.parent_entity)),
         (Some(s), None) => (s.linked_string.clone(), None),
         // Shouldn't have both types of links could be caused by user if they tried hard enough
         (Some(_), Some(_)) => {
@@ -638,7 +635,6 @@ fn lock_tooltip(
     mut commands: Commands,
 ) {
     if press.button == PointerButton::Middle {
-        info!("locked");
         let tooltip_item = r!(tooltip_query.get(press.entity));
         if tooltip_item.locked {
             r!(commands.get_entity(press.entity)).remove::<TooltipLocked>();
