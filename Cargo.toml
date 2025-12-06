@@ -2,6 +2,11 @@
 name = "bevy_nested_tooltips"
 version = "0.1.0"
 edition = "2024"
+description = "Nested Tooltips for the bevy game engine"
+repository = "https://github.com/Lyndon-Mackay/bevy_nested_tooltips"
+license = "MIT or Apache-2.0"
+keywords = ["gamedev", "bevy","ui"]
+categories = ["game-development"]
 
 [dependencies]
 bevy_app = { version = "0.17", default-features = false }
