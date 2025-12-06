@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_GREEN};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
-    NestedTooltipPlugin, Tooltip, TooltipHighlight, TooltipHighlightText, TooltipMap,
-    TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode, TooltipTitleText,
-    TooltipsContent,
+    NestedTooltipPlugin, Tooltip, TooltipHighlight, TooltipHighlightLink, TooltipHighlightText,
+    TooltipMap, TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode,
+    TooltipTitleText, TooltipsContent,
     events::{TooltipHighlighting, TooltipLocked},
 };
 use bevy_platform::collections::HashMap;
@@ -97,7 +97,18 @@ fn spawn_scene(mut commands: Commands) {
                             TooltipTermLink::new("tooltip"),
                             TextColor(BLUE.into())
                         ),
-                        TextSpan::new(" hover over it!")
+                        TextSpan::new(" hover over it! "),
+                        (
+                            TextSpan::new("top"),
+                            TooltipHighlightLink("top".into()),
+                            TextColor(GREEN.into())
+                        ),
+                        TextSpan::new(" "),
+                        (
+                            TextSpan::new("bottom"),
+                            TooltipHighlightLink("bottom".into()),
+                            TextColor(GREEN.into())
+                        ),
                     ]
                 )]
             )
@@ -113,6 +124,7 @@ fn spawn_scene(mut commands: Commands) {
         vec![
             TooltipsContent::String("A way to give users infomation can be ".into()),
             TooltipsContent::Term("recursive".into()),
+            TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
         ],
     );
 
@@ -125,6 +137,7 @@ fn spawn_scene(mut commands: Commands) {
                 " You can highlight specific ui panels with such as the ".into(),
             ),
             TooltipsContent::Highlight("sides".into()),
+            TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
         ],
     );
 
@@ -158,6 +171,35 @@ fn edge_panels(commands: &mut Commands) {
         right_node,
         BackgroundColor(BLUE.into()),
         TooltipHighlight("sides".into()),
+    ));
+
+    let top_node = Node {
+        position_type: PositionType::Absolute,
+        right: percent(10),
+        top: percent(0),
+        width: percent(80),
+        height: percent(10),
+        ..Default::default()
+    };
+
+    commands.spawn((
+        top_node,
+        BackgroundColor(BLUE.into()),
+        TooltipHighlight("top".into()),
+    ));
+
+    let bottom_node = Node {
+        position_type: PositionType::Absolute,
+        right: percent(10),
+        bottom: percent(0),
+        width: percent(80),
+        height: percent(10),
+        ..Default::default()
+    };
+    commands.spawn((
+        bottom_node,
+        BackgroundColor(BLUE.into()),
+        TooltipHighlight("bottom".into()),
     ));
 }
 
