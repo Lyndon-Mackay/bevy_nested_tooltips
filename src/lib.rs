@@ -9,7 +9,7 @@ use bevy_ecs::{
     event::{EntityEvent, Event},
     lifecycle::HookContext,
     observer::On,
-    query::{AnyOf, Has, QueryData, With},
+    query::{AnyOf, Has, QueryData},
     resource::Resource,
     system::{Commands, Query, Res},
     world::World,
@@ -35,13 +35,15 @@ use bevy_window::Window;
 use tiny_bail::prelude::*;
 
 use crate::{
-    events::{TooltipHighlighting, TooltipLocked},
+    events::TooltipLocked,
+    highlight::{HighlightPlugin, TooltipHighlightLink},
     text_observer::{
         TextHoveredOut, TextHoveredOver, TextMiddlePress, TextObservePlugin, WasHoveringText,
     },
 };
 
 pub mod events;
+pub mod highlight;
 pub mod text_observer;
 
 pub struct NestedTooltipPlugin;
@@ -49,6 +51,7 @@ pub struct NestedTooltipPlugin;
 impl Plugin for NestedTooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_plugins(TextObservePlugin)
+            .add_plugins(HighlightPlugin)
             .init_resource::<TooltipConfiguration>()
             .init_resource::<TooltipReference>()
             .add_systems(PreStartup, setup_component_hooks)
@@ -192,10 +195,6 @@ pub struct TooltipStringText;
 #[derive(Debug, Component)]
 pub struct TooltipTermText;
 
-/// Marker for the `Tooltip` texts that on interaction spawns another tooltip
-#[derive(Debug, Component)]
-pub struct TooltipHighlightText;
-
 /// Place this on a node or text that you want to spawn a Tooltip.
 /// The tooltip displayed will be the contents of `TooltipMap`
 #[derive(Debug, Component)]
@@ -252,13 +251,6 @@ impl TooltipTermLinkRecursive {
         self.parent_entity
     }
 }
-/// This is used on text as a key to all nodes that should be highlighted
-#[derive(Debug, Component)]
-pub struct TooltipHighlightLink(pub String);
-
-/// Place this on a node that you want to mark as highlightable from tooltip
-#[derive(Debug, Component)]
-pub struct TooltipHighlight(pub String);
 
 /// The data of your tooltips.
 /// When a `TooltipTermLink` is activated the string inside of it will be used as key
@@ -285,14 +277,6 @@ pub enum TooltipsContent {
 /// I do not clean up the observers if the component is removed
 /// I only anticipate this happening with despawn
 fn setup_component_hooks(world: &mut World) {
-    world
-        .register_component_hooks::<TooltipHighlightLink>()
-        .on_insert(|mut world, HookContext { entity, .. }| {
-            r!(world.commands().get_entity(entity))
-                .observe(highlight_activate)
-                .observe(highlight_deactivate);
-        });
-
     world
         .register_component_hooks::<TooltipTermLink>()
         .on_insert(|mut world, HookContext { entity, .. }| {
@@ -624,11 +608,7 @@ fn spawn_tooltip(
                             ));
                         }
                         TooltipsContent::Highlight(s) => {
-                            text.spawn((
-                                TooltipHighlightText,
-                                TooltipHighlightLink(s.clone()),
-                                TextSpan::new(s),
-                            ));
+                            text.spawn((TooltipHighlightLink(s.clone()), TextSpan::new(s)));
                         }
                     }
                 }
@@ -673,48 +653,6 @@ fn position_tooltip(
     design_node.top = top;
     design_node.bottom = bottom;
     design_node
-}
-
-#[derive(QueryData)]
-struct HighlightNodesQuery {
-    entity: Entity,
-    tooltip_highlight: &'static TooltipHighlight,
-}
-/// When text that highlights a node is moused over this will add a marker component
-/// to the user so they can then apply highlighting logic
-fn highlight_activate(
-    hover: On<TextHoveredOver>,
-    highlight_nodes_link_query: Query<&TooltipHighlightLink>,
-    highlight_nodes_query: Query<HighlightNodesQuery>,
-    mut commands: Commands,
-) {
-    let link = r!(highlight_nodes_link_query.get(hover.entity)).0.clone();
-
-    // info!("in {link} {}", highlight_nodes_query.count());
-    for node in highlight_nodes_query
-        .iter()
-        .filter(|x| x.tooltip_highlight.0 == link)
-    {
-        c!(commands.get_entity(node.entity)).insert(TooltipHighlighting);
-    }
-}
-
-/// When text that highlights a node is no longer moused over this will add a marker component
-/// to the user so they can then remove highlighting logic
-fn highlight_deactivate(
-    hover: On<TextHoveredOut>,
-    highlight_nodes_link_query: Query<&TooltipHighlightLink>,
-    highlight_nodes_query: Query<HighlightNodesQuery, With<TooltipHighlighting>>,
-    mut commands: Commands,
-) {
-    let link = r!(highlight_nodes_link_query.get(hover.entity)).0.clone();
-
-    for node in highlight_nodes_query
-        .iter()
-        .filter(|x| x.tooltip_highlight.0 == link)
-    {
-        c!(commands.get_entity(node.entity)).remove::<TooltipHighlighting>();
-    }
 }
 
 #[derive(QueryData)]

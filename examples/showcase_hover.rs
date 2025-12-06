@@ -2,10 +2,10 @@ use bevy::prelude::*;
 use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_GREEN};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
-    NestedTooltipPlugin, Tooltip, TooltipHighlight, TooltipHighlightLink, TooltipHighlightText,
-    TooltipMap, TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode,
-    TooltipTitleText, TooltipsContent,
+    NestedTooltipPlugin, Tooltip, TooltipMap, TooltipSpawned, TooltipTermLink, TooltipTermText,
+    TooltipTitleNode, TooltipTitleText, TooltipsContent,
     events::{TooltipHighlighting, TooltipLocked},
+    highlight::{TooltipHighlight, TooltipHighlightLink},
 };
 use bevy_platform::collections::HashMap;
 use bevy_ui::RelativeCursorPosition;
@@ -245,7 +245,7 @@ fn term_font(term_text: On<Add, TooltipTermText>, mut commands: Commands) {
 fn query_style(
     new_tooltip: On<TooltipSpawned>,
     ancestor_query: Query<&ChildOf>,
-    highlight_query: Query<Entity, With<TooltipHighlightText>>,
+    highlight_query: Query<Entity, With<TooltipHighlightLink>>,
     mut commands: Commands,
 ) {
     for current_highlight in highlight_query {
