@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_GREEN};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
-    NestedTooltipPlugin, Tooltip, TooltipHighlight, TooltipHighlightLink, TooltipHighlightText,
-    TooltipMap, TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode,
-    TooltipTitleText, TooltipsContent,
+    ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipHighlight,
+    TooltipHighlightLink, TooltipHighlightText, TooltipMap, TooltipSpawned, TooltipTermLink,
+    TooltipTermText, TooltipTitleNode, TooltipTitleText, TooltipsContent,
     events::{TooltipHighlighting, TooltipLocked},
 };
 use bevy_platform::collections::HashMap;
@@ -49,6 +49,11 @@ fn main() -> AppExit {
 
 fn spawn_scene(mut commands: Commands) {
     commands.spawn(Camera2d);
+
+    commands.insert_resource(TooltipConfiguration {
+        activation_method: ActivationMethod::MiddleMouse,
+        ..Default::default()
+    });
 
     edge_panels(&mut commands);
     let interaction_screen = Node {

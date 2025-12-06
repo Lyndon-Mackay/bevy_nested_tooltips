@@ -36,7 +36,9 @@ use tiny_bail::prelude::*;
 
 use crate::{
     events::{TooltipHighlighting, TooltipLocked},
-    text_observer::{TextHoveredOut, TextHoveredOver, TextObservePlugin, WasHoveringText},
+    text_observer::{
+        TextHoveredOut, TextHoveredOver, TextMiddlePress, TextObservePlugin, WasHoveringText,
+    },
 };
 
 pub mod events;
@@ -59,14 +61,14 @@ impl Plugin for NestedTooltipPlugin {
 #[derive(Resource, Debug)]
 pub struct TooltipConfiguration {
     /// See the `ActivationMethod` variants
-    activation_method: ActivationMethod,
+    pub activation_method: ActivationMethod,
 
     /// Maximum amount of time the `ToolTip` will remain around without user interaction
-    interaction_wait_for_time: Duration,
+    pub interaction_wait_for_time: Duration,
 
     /// The starting z_index this will be incremented for each recursive tooltip
     /// increase this if tooltips are not on top and you want to fix that
-    starting_z_index: i32,
+    pub starting_z_index: i32,
 }
 
 impl Default for TooltipConfiguration {
@@ -492,7 +494,7 @@ fn hover_despawn(
 /// When user has pressed the middle mouse button on a `ToolTipLink`
 #[allow(clippy::too_many_arguments)]
 fn middle_mouse_spawn(
-    press: On<Pointer<Press>>,
+    press: On<TextMiddlePress>,
     links_query: Query<AnyOf<(&TooltipTermLink, &TooltipTermLinkRecursive)>>,
     existing_tooltips_query: Query<(Entity, &Tooltip)>,
     window_query: Query<&Window>,
@@ -502,9 +504,7 @@ fn middle_mouse_spawn(
     mut commands: Commands,
 ) {
     let current_activation = tooltip_configuration.activation_method.clone();
-    if press.button == PointerButton::Middle
-        && matches!(current_activation, ActivationMethod::Hover { .. })
-    {
+    if matches!(current_activation, ActivationMethod::MiddleMouse) {
         spawn_tooltip(
             press.entity,
             links_query,
@@ -737,12 +737,4 @@ fn lock_tooltip(
             r!(commands.get_entity(press.entity)).insert(TooltipLocked);
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {}
 }

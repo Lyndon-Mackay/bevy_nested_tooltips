@@ -1,17 +1,22 @@
 //! `TextSpan`'s do not currently support observers so this file is here to read hovers on text
 //! and to narrow it down to the actual textspan.
 
-use bevy_app::{Plugin, Update};
+use bevy_app::{Plugin, PreStartup, Update};
 use bevy_ecs::{
     component::Component,
     entity::Entity,
     event::EntityEvent,
     hierarchy::ChildOf,
-    lifecycle::Add,
+    lifecycle::{Add, HookContext},
     observer::On,
     query::{Or, QueryData, With, Without},
     resource::Resource,
     system::{Commands, Query, Res},
+    world::World,
+};
+use bevy_picking::{
+    events::{Pointer, Press},
+    pointer::PointerButton,
 };
 use bevy_text::TextLayoutInfo;
 use bevy_ui::{ComputedNode, RelativeCursorPosition, widget::Text};
@@ -24,7 +29,8 @@ pub(crate) struct TextObservePlugin;
 
 impl Plugin for TextObservePlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_systems(Update, tooltip_links)
+        app.add_systems(PreStartup, setup_component_hooks)
+            .add_systems(Update, tooltip_links)
             .add_observer(term_link_textspan_parent)
             .add_observer(recursive_term_link_textspan_parent)
             .add_observer(highlight_link_textspan_parent);
@@ -55,6 +61,11 @@ pub(crate) struct TextHoveredOut {
     pub(crate) entity: Entity,
 }
 
+#[derive(Debug, EntityEvent)]
+pub(crate) struct TextMiddlePress {
+    pub(crate) entity: Entity,
+}
+
 /// This is to mark text as having a textspan that contains a link
 /// RelativeCursorPosition and observers do not work with textspan
 /// So will listen to parent instead and check the span
@@ -62,6 +73,14 @@ pub(crate) struct TextHoveredOut {
 #[derive(Component, Debug)]
 #[require(RelativeCursorPosition)]
 pub(crate) struct ToolTipListenTextSpan;
+
+fn setup_component_hooks(world: &mut World) {
+    world
+        .register_component_hooks::<ToolTipListenTextSpan>()
+        .on_insert(|mut world, HookContext { entity, .. }| {
+            world.commands().entity(entity).observe(middle_mouse_links);
+        });
+}
 
 pub(crate) fn highlight_link_textspan_parent(
     add: On<Add, TooltipHighlightLink>,
@@ -174,6 +193,11 @@ fn tooltip_links(
                         });
                     }
                     return;
+                } else {
+                    commands.remove_resource::<WasHoveringText>();
+                    commands.trigger(TextHoveredOut {
+                        entity: hovered.entity,
+                    });
                 }
             }
             None => {
@@ -195,16 +219,6 @@ fn tooltip_links(
             && let Some(norm) = relative.normalized
         {
             let adjusted_cursor_position = ui_node.size() / 2. + norm * ui_node.size();
-            // info!("{:?}", adjusted_cursor_position);
-
-            // info!(
-            //     "{:?}",
-            //     text_layout
-            //         .section_rects
-            //         .iter()
-            //         .enumerate()
-            //         .find(|(_, rect)| rect.1.contains(adjusted_cursor_position))
-            // );
 
             if let Some((hovered_entity, _)) = text_layout
                 .section_rects
@@ -220,6 +234,49 @@ fn tooltip_links(
                     relative_cursor_entity: entity,
                 });
                 return;
+            }
+        }
+    }
+}
+
+#[allow(clippy::type_complexity)]
+fn middle_mouse_links(
+    mut press: On<Pointer<Press>>,
+    tooltip_links_query: Query<
+        TooltipLinksQuery,
+        (
+            Without<TooltipsNested>,
+            Or<(
+                With<TooltipTermLink>,
+                With<TooltipHighlightLink>,
+                With<ToolTipListenTextSpan>,
+            )>,
+        ),
+    >,
+    mut commands: Commands,
+) {
+    press.propagate(false);
+    if press.button != PointerButton::Middle {
+        return;
+    }
+    if let Ok(links_item) = tooltip_links_query.get(press.entity) {
+        let relative = links_item.relative_cursor;
+        let ui_node = links_item.compute_node;
+        let text_layout = links_item.text_layout_info;
+        if relative.cursor_over
+            && let Some(norm) = relative.normalized
+        {
+            let adjusted_cursor_position = ui_node.size() / 2. + norm * ui_node.size();
+
+            if let Some((hovered_entity, _)) = text_layout
+                .section_rects
+                .iter()
+                .find(|rect| rect.1.contains(adjusted_cursor_position))
+                .copied()
+            {
+                commands.trigger(TextMiddlePress {
+                    entity: hovered_entity,
+                });
             }
         }
     }
