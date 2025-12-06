@@ -1,3 +1,9 @@
+pub mod events;
+pub mod highlight;
+pub mod layout;
+pub mod term;
+pub mod text_observer;
+
 use std::time::Duration;
 
 use bevy_app::{Plugin, PreStartup, Update};
@@ -34,19 +40,23 @@ use bevy_ui::{
 use bevy_window::Window;
 use tiny_bail::prelude::*;
 
+pub mod prelude {
+    pub use super::{
+        ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipMap,
+        TooltipSpawned, TooltipsContent,
+        events::{TooltipHighlighting, TooltipLocked},
+        highlight::{TooltipHighlight, TooltipHighlightLink},
+        layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
+        term::{TooltipTermLink, TooltipTermLinkRecursive},
+    };
+}
+use prelude::*;
+
 use crate::{
-    events::TooltipLocked,
-    highlight::{HighlightPlugin, TooltipHighlightLink},
-    layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
-    term::{TooltipTermLink, TooltipTermLinkRecursive, hover_time_spawn},
+    highlight::HighlightPlugin,
+    term::hover_time_spawn,
     text_observer::{TextHoveredOut, TextMiddlePress, TextObservePlugin, WasHoveringText},
 };
-
-pub mod events;
-pub mod highlight;
-pub mod layout;
-pub mod term;
-pub mod text_observer;
 
 pub struct NestedTooltipPlugin;
 
