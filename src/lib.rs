@@ -38,14 +38,14 @@ use crate::{
     events::TooltipLocked,
     highlight::{HighlightPlugin, TooltipHighlightLink},
     layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
-    text_observer::{
-        TextHoveredOut, TextHoveredOver, TextMiddlePress, TextObservePlugin, WasHoveringText,
-    },
+    term::{TooltipTermLink, TooltipTermLinkRecursive, hover_time_spawn},
+    text_observer::{TextHoveredOut, TextMiddlePress, TextObservePlugin, WasHoveringText},
 };
 
 pub mod events;
 pub mod highlight;
 pub mod layout;
+pub mod term;
 pub mod text_observer;
 
 pub struct NestedTooltipPlugin;
@@ -177,25 +177,6 @@ pub struct TooltipsNested(Entity);
 #[relationship(relationship_target = TooltipsNested)]
 pub struct TooltipsNestedOf(Entity);
 
-/// Place this on a node or text that you want to spawn a Tooltip.
-/// The tooltip displayed will be the contents of `TooltipMap`
-#[derive(Debug, Component)]
-pub struct TooltipTermLink {
-    linked_string: String,
-}
-
-impl TooltipTermLink {
-    pub fn new(linked_string: impl ToString) -> Self {
-        Self {
-            linked_string: linked_string.to_string(),
-        }
-    }
-
-    pub fn linked_string(&self) -> &str {
-        &self.linked_string
-    }
-}
-
 /// Timer added on creating a tooltip, if the user does not mouseover the tooltip in that
 /// time then it will be despawned
 #[derive(Debug, Component)]
@@ -207,31 +188,6 @@ pub struct TooltipLinkTimer {
 #[derive(Event)]
 struct TooltipLinkTimeElapsed {
     term_entity: Entity,
-}
-
-/// This is used for putting links of tooltips in tooltips
-/// Should not be created by end users but can safely read if you are interested in recursive case
-#[derive(Debug, Component)]
-pub struct TooltipTermLinkRecursive {
-    parent_entity: Entity,
-    linked_string: String,
-}
-
-impl TooltipTermLinkRecursive {
-    pub fn new(parent_entity: Entity, linked_string: String) -> Self {
-        Self {
-            parent_entity,
-            linked_string,
-        }
-    }
-
-    pub fn linked_string(&self) -> &str {
-        &self.linked_string
-    }
-
-    pub fn parent_entity(&self) -> Entity {
-        self.parent_entity
-    }
 }
 
 /// The data of your tooltips.
@@ -298,24 +254,6 @@ fn setup_component_hooks(world: &mut World) {
 struct HoverLinkQuery {
     link: AnyOf<(&'static TooltipTermLink, &'static TooltipTermLinkRecursive)>,
     timer: Option<&'static mut TooltipLinkTimer>,
-}
-
-/// This triggers for `ToolTip` links
-/// If configured to display on hover this will add a timer that unless pointer moves
-/// away from will spawn a `ToolTip`
-fn hover_time_spawn(
-    hover: On<TextHoveredOver>,
-    tooltip_configuration: Res<TooltipConfiguration>,
-    mut commands: Commands,
-) {
-    let current_activation = tooltip_configuration.activation_method.clone();
-    if let ActivationMethod::Hover { time } = current_activation {
-        {
-            r!(commands.get_entity(hover.entity)).insert(TooltipLinkTimer {
-                timer: Timer::new(time, TimerMode::Once),
-            });
-        }
-    }
 }
 
 /// Removes hover timer when user's pointer has left

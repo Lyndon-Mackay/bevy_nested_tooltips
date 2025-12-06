@@ -3,10 +3,11 @@ use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_G
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
     ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipMap,
-    TooltipSpawned, TooltipTermLink, TooltipTermLinkRecursive, TooltipsContent,
+    TooltipSpawned, TooltipsContent,
     events::{TooltipHighlighting, TooltipLocked},
     highlight::{TooltipHighlight, TooltipHighlightLink},
     layout::{TooltipTitleNode, TooltipTitleText},
+    term::{TooltipTermLink, TooltipTermLinkRecursive},
 };
 use bevy_platform::collections::HashMap;
 use bevy_ui::RelativeCursorPosition;
