@@ -80,3 +80,9 @@ Or
 ### Style your tooltips
 
 Check the examples files for examples
+
+## Limitations
+
+This plugin assumes a single fullscreen and camera is used.
+
+using this library when not fullscreen will likely trigger the links at the wrong time, this limitation will be removed once textspans support observers
