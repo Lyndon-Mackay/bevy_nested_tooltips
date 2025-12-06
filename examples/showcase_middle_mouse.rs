@@ -119,24 +119,30 @@ fn spawn_scene(mut commands: Commands) {
 
     tooltip_map.insert(
         "tooltip".into(),
-        vec![
-            TooltipsContent::String("A way to give users infomation can be ".into()),
-            TooltipsContent::Term("recursive".into()),
-            TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
-        ],
+        ToolTipsData::new(
+            "ToolTip",
+            vec![
+                TooltipsContent::String("A way to give users infomation can be ".into()),
+                TooltipsContent::Term("recursive".into()),
+                TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
+            ],
+        ),
     );
 
     tooltip_map.insert(
         "recursive".into(),
-        vec![
-            TooltipsContent::String("Tooltips can be ".into()),
-            TooltipsContent::Term("recursive".into()),
-            TooltipsContent::String(
-                " You can highlight specific ui panels with such as the ".into(),
-            ),
-            TooltipsContent::Highlight("sides".into()),
-            TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
-        ],
+        ToolTipsData::new(
+            "Recursive",
+            vec![
+                TooltipsContent::String("Tooltips can be ".into()),
+                TooltipsContent::Term("recursive".into()),
+                TooltipsContent::String(
+                    " You can highlight specific ui panels with such as the ".into(),
+                ),
+                TooltipsContent::Highlight("sides".into()),
+                TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
+            ],
+        ),
     );
 
     commands.insert_resource(tooltip_map);

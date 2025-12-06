@@ -43,8 +43,8 @@ use tiny_bail::prelude::*;
 /// An easy way to import commonly used types
 pub mod prelude {
     pub use super::{
-        ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipMap,
-        TooltipSpawned, TooltipsContent,
+        ActivationMethod, NestedTooltipPlugin, ToolTipsData, Tooltip, TooltipConfiguration,
+        TooltipMap, TooltipSpawned, TooltipsContent,
         events::{TooltipHighlighting, TooltipLocked},
         highlight::{TooltipHighlight, TooltipHighlightLink},
         layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
@@ -204,15 +204,33 @@ struct TooltipLinkTimeElapsed {
 /// The data of your tooltips.
 /// When a `TooltipTermLink` is activated the string inside of it will be used as key
 /// for the hashmap and its result will populate the tooltip
-#[derive(Resource, Debug, Deref, DerefMut)]
+#[derive(Resource, Debug, Deref, DerefMut, Clone)]
 pub struct TooltipMap {
-    pub map: HashMap<String, Vec<TooltipsContent>>,
+    pub map: HashMap<String, ToolTipsData>,
+}
+
+/// What is to be included in the `ToolTip`
+#[derive(Debug, Clone)]
+pub struct ToolTipsData {
+    /// The title at the top of the tooltips
+    pub title: String,
+    /// The rest of the text
+    pub content: Vec<TooltipsContent>,
+}
+
+impl ToolTipsData {
+    pub fn new(title: impl ToString, content: Vec<TooltipsContent>) -> Self {
+        Self {
+            title: title.to_string(),
+            content,
+        }
+    }
 }
 
 /// This makes up a part of the tooltips text content.
 /// Each variant outputs text but with different behaviours
 /// See each variants documenation for details
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TooltipsContent {
     /// Displays normal text for the user
     String(String),
@@ -482,7 +500,7 @@ fn spawn_tooltip(
         ),
     };
 
-    let content = r!(tooltips_map.get(&tooltip_term));
+    let tooltip_data = r!(tooltips_map.get(&tooltip_term));
     let design_node = position_tooltip(window_query, tooltip_reference);
 
     let mut tooltip_commands = commands.spawn((
@@ -507,7 +525,7 @@ fn spawn_tooltip(
                 display: Display::Flex,
                 ..Default::default()
             },
-            children![(TooltipTitleText, Text::new(tooltip_term))]
+            children![(TooltipTitleText, Text::new(tooltip_data.title.clone()))]
         )],
     ));
     if let Some(nested) = nested {
@@ -526,8 +544,8 @@ fn spawn_tooltip(
                 Text::new(""),
             ))
             .with_children(|text| {
-                for c in content {
-                    match c {
+                for c in &tooltip_data.content {
+                    match c.clone() {
                         TooltipsContent::String(s) => {
                             text.spawn((TooltipStringText, TextSpan::new(s)));
                         }
