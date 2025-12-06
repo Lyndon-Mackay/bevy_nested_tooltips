@@ -21,7 +21,7 @@ use bevy_log::error;
 use bevy_math::{Rect, Vec2};
 use bevy_picking::{
     Pickable,
-    events::{Move, Out, Over, Pointer, Press},
+    events::{Move, Out, Pointer, Press},
     pointer::PointerButton,
 };
 use bevy_platform::collections::HashMap;

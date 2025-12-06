@@ -1,27 +1,49 @@
 use bevy::prelude::*;
-use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, WHITE, YELLOW_GREEN};
+use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_GREEN};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
     NestedTooltipPlugin, Tooltip, TooltipHighlight, TooltipHighlightText, TooltipMap,
     TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode, TooltipTitleText,
-    TooltipsContent, events::TooltipHighlighting,
+    TooltipsContent,
+    events::{TooltipHighlighting, TooltipLocked},
 };
 use bevy_platform::collections::HashMap;
 use bevy_ui::RelativeCursorPosition;
+use bevy_window::WindowMode;
+
+#[derive(Component)]
+struct LockMessage;
 
 fn main() -> AppExit {
     App::new()
-        .add_plugins((DefaultPlugins, NestedTooltipPlugin))
+        .add_plugins((
+            //This library only works for fullscreen
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    mode: WindowMode::BorderlessFullscreen(MonitorSelection::Current),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            }),
+            NestedTooltipPlugin,
+        ))
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, spawn_scene)
+        // Note having that many observers is not neccessary
+        // just it's clearer what each example does
+        // Also easier to prototype
         .add_observer(style_tooltip)
         .add_observer(center_title)
         .add_observer(title_font)
         .add_observer(term_font)
+        // Look at query style to get this done without using so many observers
         .add_observer(query_style)
+        // These observers are more necessary to react to user
         .add_observer(add_highlight)
         .add_observer(remove_highlight)
+        .add_observer(display_locking)
+        .add_observer(display_unlocking)
         .run()
 }
 
@@ -111,15 +133,29 @@ fn spawn_scene(mut commands: Commands) {
 
 fn edge_panels(commands: &mut Commands) {
     let left_node = Node {
+        position_type: PositionType::Absolute,
         left: percent(0),
-        top: percent(0),
+        top: percent(10),
         bottom: auto(),
         width: percent(5),
-        height: percent(100),
+        height: percent(80),
         ..Default::default()
     };
     commands.spawn((
         left_node,
+        BackgroundColor(BLUE.into()),
+        TooltipHighlight("sides".into()),
+    ));
+    let right_node = Node {
+        position_type: PositionType::Absolute,
+        right: percent(0),
+        top: percent(10),
+        width: percent(5),
+        height: percent(80),
+        ..Default::default()
+    };
+    commands.spawn((
+        right_node,
         BackgroundColor(BLUE.into()),
         TooltipHighlight("sides".into()),
     ));
@@ -165,6 +201,7 @@ fn term_font(term_text: On<Add, TooltipTermText>, mut commands: Commands) {
 }
 
 // If you prefer you can listen to this observer and style via querying
+// Static styling can be done entirely here
 fn query_style(
     new_tooltip: On<TooltipSpawned>,
     ancestor_query: Query<&ChildOf>,
@@ -183,6 +220,7 @@ fn query_style(
 }
 
 // When highlighted change the colour, how you highlight is up to you
+// maybe fancy animations
 fn add_highlight(side: On<Add, TooltipHighlighting>, mut commands: Commands) {
     // info!("style");
     commands
@@ -198,4 +236,37 @@ fn remove_highlight(side: On<Remove, TooltipHighlighting>, mut commands: Command
         .get_entity(side.entity)
         .unwrap()
         .insert(BackgroundColor(BLUE.into()));
+}
+
+fn display_locking(lock: On<Add, TooltipLocked>, mut commands: Commands) {
+    // Making this actually look nice is an excercise for the reader
+    let id = commands
+        .spawn((
+            Text::new("I have been locked"),
+            TextFont::from_font_size(10.),
+            LockMessage,
+        ))
+        .id();
+    commands
+        .get_entity(lock.entity)
+        .unwrap()
+        .insert(BackgroundColor(ORANGE_RED.into()))
+        .add_child(id);
+}
+
+fn display_unlocking(
+    lock: On<Remove, TooltipLocked>,
+    message_lock_query: Query<(Entity, &ChildOf), With<LockMessage>>,
+    mut commands: Commands,
+) {
+    commands
+        .get_entity(lock.entity)
+        .unwrap()
+        .insert(BackgroundColor(ORANGE.into()));
+    if let Some((entity, _)) = message_lock_query
+        .iter()
+        .find(|item| item.1.0 == lock.entity)
+    {
+        commands.get_entity(entity).unwrap().despawn();
+    }
 }
