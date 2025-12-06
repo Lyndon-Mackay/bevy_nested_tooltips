@@ -35,6 +35,7 @@ impl TooltipTermLink {
 
 /// This is used for putting links of tooltips in tooltips
 /// Should not be created by end users but can safely read if you are interested in recursive case
+/// Recursive case may be treated seperately in future such as shorter hover times
 #[derive(Debug, Component)]
 pub struct TooltipTermLinkRecursive {
     pub(crate) parent_entity: Entity,
