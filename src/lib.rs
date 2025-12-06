@@ -37,6 +37,7 @@ use tiny_bail::prelude::*;
 use crate::{
     events::TooltipLocked,
     highlight::{HighlightPlugin, TooltipHighlightLink},
+    layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
     text_observer::{
         TextHoveredOut, TextHoveredOver, TextMiddlePress, TextObservePlugin, WasHoveringText,
     },
@@ -44,6 +45,7 @@ use crate::{
 
 pub mod events;
 pub mod highlight;
+pub mod layout;
 pub mod text_observer;
 
 pub struct NestedTooltipPlugin;
@@ -174,26 +176,6 @@ pub struct TooltipsNested(Entity);
 #[derive(Debug, Component)]
 #[relationship(relationship_target = TooltipsNested)]
 pub struct TooltipsNestedOf(Entity);
-
-/// Marker for the `Tooltip` title node
-#[derive(Debug, Component)]
-pub struct TooltipTitleNode;
-
-/// Marker for the `Tooltip` title text this will be place in the title node
-#[derive(Debug, Component)]
-pub struct TooltipTitleText;
-
-/// Marker for the `Tooltip` info node, that is the node that holds all non title text
-#[derive(Debug, Component)]
-pub struct TooltipTextNode;
-
-/// Marker for the `Tooltip` texts that is not interactable
-#[derive(Debug, Component)]
-pub struct TooltipStringText;
-
-/// Marker for the `Tooltip` texts that on interaction spawns another tooltip
-#[derive(Debug, Component)]
-pub struct TooltipTermText;
 
 /// Place this on a node or text that you want to spawn a Tooltip.
 /// The tooltip displayed will be the contents of `TooltipMap`
@@ -603,7 +585,6 @@ fn spawn_tooltip(
                         TooltipsContent::Term(s) => {
                             text.spawn((
                                 TooltipTermLinkRecursive::new(parent_entity, s.clone()),
-                                TooltipTermText,
                                 TextSpan::new(s),
                             ));
                         }

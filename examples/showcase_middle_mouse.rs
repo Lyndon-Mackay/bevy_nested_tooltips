@@ -3,10 +3,10 @@ use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_G
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::{
     ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipMap,
-    TooltipSpawned, TooltipTermLink, TooltipTermText, TooltipTitleNode, TooltipTitleText,
-    TooltipsContent,
+    TooltipSpawned, TooltipTermLink, TooltipTermLinkRecursive, TooltipsContent,
     events::{TooltipHighlighting, TooltipLocked},
     highlight::{TooltipHighlight, TooltipHighlightLink},
+    layout::{TooltipTitleNode, TooltipTitleText},
 };
 use bevy_platform::collections::HashMap;
 use bevy_ui::RelativeCursorPosition;
@@ -239,7 +239,10 @@ fn title_font(title_text: On<Add, TooltipTitleText>, mut commands: Commands) {
         });
 }
 
-fn term_font(term_text: On<Add, TooltipTermText>, mut commands: Commands) {
+fn term_font(
+    term_text: On<Add, (TooltipTermLink, TooltipTermLinkRecursive)>,
+    mut commands: Commands,
+) {
     commands
         .get_entity(term_text.entity)
         .unwrap()
