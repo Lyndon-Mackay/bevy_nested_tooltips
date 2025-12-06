@@ -40,6 +40,7 @@ use bevy_ui::{
 use bevy_window::Window;
 use tiny_bail::prelude::*;
 
+/// An easy way to import commonly used types
 pub mod prelude {
     pub use super::{
         ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipMap,
