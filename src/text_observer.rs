@@ -9,9 +9,8 @@ use bevy_ecs::{
     hierarchy::ChildOf,
     lifecycle::{Add, HookContext},
     observer::On,
-    query::{Changed, Or, QueryData, With, Without},
+    query::{Or, QueryData, With, Without},
     resource::Resource,
-    schedule::IntoScheduleConfigs,
     system::{Commands, Query, Res},
     world::World,
 };
@@ -22,7 +21,6 @@ use bevy_picking::{
 };
 use bevy_text::TextLayoutInfo;
 use bevy_ui::{ComputedNode, RelativeCursorPosition, widget::Text};
-use bevy_window::Window;
 use tiny_bail::prelude::*;
 
 use crate::{TooltipHighlightLink, TooltipTermLink, TooltipTermLinkRecursive, TooltipsNested};
@@ -33,7 +31,7 @@ pub(crate) struct TextObservePlugin;
 impl Plugin for TextObservePlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_systems(PreStartup, setup_component_hooks)
-            .add_systems(Update, tooltip_links.run_if(mouse_moved))
+            .add_systems(Update, tooltip_links)
             .add_observer(term_link_textspan_parent)
             .add_observer(recursive_term_link_textspan_parent)
             .add_observer(highlight_link_textspan_parent);
@@ -171,12 +169,6 @@ pub(crate) fn recursive_term_link_textspan_parent(
     error!(
         "{add_entity} has no text component nor any ancestors with a text componet.\nText needs to be inserted concurrently or before any links.\nThis limitation will be removed when textspans support observers"
     );
-}
-
-/// Check if the mouse has moved, does this by window count only
-/// single window is supported
-fn mouse_moved(window_query: Query<&Window, Changed<Window>>) -> bool {
-    window_query.count() == 1
 }
 
 #[derive(QueryData)]

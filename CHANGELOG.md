@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.3
+- revert hover checks only running when cursor moved.
+
 ## 0.2.2
 - Warning about text component needing to be added with links
 
