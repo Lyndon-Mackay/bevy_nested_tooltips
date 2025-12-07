@@ -26,15 +26,16 @@ impl Plugin for HighlightPlugin {
     }
 }
 
-/// Inserts `TooltipHighlighting` onto entities that has a component `TooltipHighlight` with the same string key
+/// Inserts [`TooltipHighlighting`] onto entities that has a component [`TooltipHighlight`] with the same string key
 #[derive(Debug, Component)]
 pub struct TooltipHighlightLink(pub String);
 
-/// When a `TooltipHighlightLink` has been activated and shares the same string with this component
-/// `TooltipHighlighting` will be added to this entity
+/// When a [`TooltipHighlightLink`] has been activated and shares the same string with this component
+/// [`TooltipHighlighting`] will be added to this entity
 #[derive(Debug, Component)]
 pub struct TooltipHighlight(pub String);
 
+/// Highlight specific component hooks
 fn setup_component_hooks(world: &mut World) {
     world
         .register_component_hooks::<TooltipHighlightLink>()

@@ -43,8 +43,8 @@ use tiny_bail::prelude::*;
 /// An easy way to import commonly used types
 pub mod prelude {
     pub use super::{
-        ActivationMethod, NestedTooltipPlugin, ToolTipsData, Tooltip, TooltipConfiguration,
-        TooltipMap, TooltipSpawned, TooltipsContent,
+        ActivationMethod, NestedTooltipPlugin, Tooltip, TooltipConfiguration, TooltipMap,
+        TooltipSpawned, TooltipsContent, TooltipsData,
         events::{TooltipHighlighting, TooltipLocked},
         highlight::{TooltipHighlight, TooltipHighlightLink},
         layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
@@ -59,6 +59,7 @@ use crate::{
     text_observer::{TextHoveredOut, TextMiddlePress, TextObservePlugin, WasHoveringText},
 };
 
+/// This plugin adds systems and resources that makes the logic work
 pub struct NestedTooltipPlugin;
 
 impl Plugin for NestedTooltipPlugin {
@@ -76,7 +77,7 @@ impl Plugin for NestedTooltipPlugin {
 /// Resource that configures the behaviour of tooltips
 #[derive(Resource, Debug)]
 pub struct TooltipConfiguration {
-    /// See the `ActivationMethod` variants
+    /// See the [`ActivationMethod`] variants
     pub activation_method: ActivationMethod,
 
     /// Maximum amount of time the `ToolTip` will remain around without user interaction
@@ -98,6 +99,7 @@ impl Default for TooltipConfiguration {
 }
 
 /// How a tooltip is triggered by default this is done via hovering
+/// Hovering can be further customised
 #[derive(Debug, Clone)]
 pub enum ActivationMethod {
     /// Middle mouse button is pressed
@@ -114,11 +116,12 @@ impl Default for ActivationMethod {
     }
 }
 
-/// Default node for the `Tooltip` node use this to layout your tooltips without
+/// Default node for the [`Tooltip`] node use this to layout your tooltips without
 /// accidentally moving it's position
+/// This resource is initialised on adding plugin
 #[derive(Resource, Debug)]
 pub struct TooltipReference {
-    /// Top level Node this will be copied to the `Tooltip` positions will be overwritten
+    /// Top level Node this will be copied to the [`Tooltip`] positions will be overwritten
     tooltip_node: Node,
 }
 
@@ -166,59 +169,62 @@ impl Tooltip {
 #[derive(Debug, Component)]
 struct ToolTipDebounced;
 
+/// This is sent when a [`Tooltip`] is spawned
 #[derive(Debug, EntityEvent)]
 pub struct TooltipSpawned {
     pub entity: Entity,
 }
 
 /// If the user hasn't hovered on the tooltip in the specified time despawn it
-/// time is configured in `TooltipConfiguration`
+/// time is configured in [`TooltipConfiguration`]
 #[derive(Debug, Component)]
 pub struct TooltipWaitForHover {
     timer: Timer,
 }
 
-/// `Tooltip` that spawned nested from this one
+/// [`Tooltip`] that spawned nested from this one
 #[derive(Debug, Component)]
 #[relationship_target(relationship = TooltipsNestedOf)]
 pub struct TooltipsNested(Entity);
 
-/// This `Tooltip` is nested under this `Tooltip`
+/// This [`Tooltip`] is nested under the entities `Tooltip`
 #[derive(Debug, Component)]
 #[relationship(relationship_target = TooltipsNested)]
 pub struct TooltipsNestedOf(Entity);
 
-/// Timer added on creating a tooltip, if the user does not mouseover the tooltip in that
+/// Timer added on creating a [`Tooltip`], if the user does not mouseover the tooltip in that
 /// time then it will be despawned
 #[derive(Debug, Component)]
 pub struct TooltipLinkTimer {
     timer: Timer,
 }
 
-/// Sent when link has been hovered long enough to spawn `ToolTip`
+/// Sent when link has been hovered long enough to spawn [`ToolTip`]
 #[derive(Event)]
 struct TooltipLinkTimeElapsed {
     term_entity: Entity,
 }
 
 /// The data of your tooltips.
-/// When a `TooltipTermLink` is activated the string inside of it will be used as key
+/// When a [`TooltipTermLink`] is activated the string inside of it will be used as key
 /// for the hashmap and its result will populate the tooltip
+///
+/// See [`Tooltipsdata`]
 #[derive(Resource, Debug, Deref, DerefMut, Clone)]
 pub struct TooltipMap {
-    pub map: HashMap<String, ToolTipsData>,
+    pub map: HashMap<String, TooltipsData>,
 }
 
-/// What is to be included in the `ToolTip`
+/// What is to be included in the [`Tooltip`]
 #[derive(Debug, Clone)]
-pub struct ToolTipsData {
+pub struct TooltipsData {
     /// The title at the top of the tooltips
     pub title: String,
     /// The rest of the text
     pub content: Vec<TooltipsContent>,
 }
 
-impl ToolTipsData {
+impl TooltipsData {
     pub fn new(title: impl ToString, content: Vec<TooltipsContent>) -> Self {
         Self {
             title: title.to_string(),
@@ -234,9 +240,9 @@ impl ToolTipsData {
 pub enum TooltipsContent {
     /// Displays normal text for the user
     String(String),
-    /// Nested information that can spawn's a child tooltip
+    /// Nested information that can spawn's a child tooltip, used as key for [`TooltipMap`]
     Term(String),
-    /// Adds a highlight Component to all tooltips with `TooltipHighlight`
+    /// Adds a highlight Component to all tooltips with [`TooltipHighlight`]
     Highlight(String),
 }
 
@@ -271,7 +277,7 @@ fn setup_component_hooks(world: &mut World) {
             world
                 .commands()
                 .entity(entity)
-                .observe(lock_tooltip)
+                .observe(toggle_lock)
                 .observe(hover_debounce)
                 .observe(hover_despawn);
         },
@@ -378,6 +384,8 @@ fn hover_debounce(
     tooltip_query: Query<TooltipDebounceQuery>,
     mut commands: Commands,
 ) {
+    // Number should not be greater then 0.5
+    // the low the number the more in the tooltip, the pointer needs to be
     const DEBOUNCE_DIST: f32 = 0.48;
     let tooltip_item = r!(tooltip_query.get(hover.entity));
     if tooltip_item.debounced {
@@ -424,7 +432,7 @@ fn hover_despawn(
     r!(commands.get_entity(hover.entity)).despawn();
 }
 
-/// When user has pressed the middle mouse button on a `ToolTipLink`
+/// When user has pressed the middle mouse button on a [`TooltipLink`]
 #[allow(clippy::too_many_arguments)]
 fn middle_mouse_spawn(
     press: On<TextMiddlePress>,
@@ -609,8 +617,8 @@ struct LockTooltipQuery {
     locked: Has<TooltipLocked>,
 }
 
-/// When user presses middle mouse button lock the ToolTip
-fn lock_tooltip(
+/// When user presses middle mouse button add or remove [`TooltipLocked`]
+fn toggle_lock(
     press: On<Pointer<Press>>,
     tooltip_query: Query<LockTooltipQuery>,
     mut commands: Commands,

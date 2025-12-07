@@ -6,6 +6,7 @@ use bevy_ecs::component::Component;
 /// Marker to indicate this node is currently being highlighted by this tooltip
 /// When this component is added user should apply styling so it's obvious to the player
 /// what is being highlighted
+/// See the highlight module for details on highlighting
 #[derive(Debug, Component)]
 pub struct TooltipHighlighting;
 

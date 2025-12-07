@@ -96,7 +96,7 @@ fn spawn_scene(mut commands: Commands) {
                         TooltipTermLink::new("tooltip"),
                         TextColor(BLUE.into())
                     ),
-                    TextSpan::new(" hover over it! "),
+                    TextSpan::new(" press middle mouse over it! "),
                     (
                         TextSpan::new("top"),
                         TooltipHighlightLink("top".into()),
@@ -119,7 +119,7 @@ fn spawn_scene(mut commands: Commands) {
 
     tooltip_map.insert(
         "tooltip".into(),
-        ToolTipsData::new(
+        TooltipsData::new(
             "ToolTip",
             vec![
                 TooltipsContent::String("A way to give users infomation can be ".into()),
@@ -131,7 +131,7 @@ fn spawn_scene(mut commands: Commands) {
 
     tooltip_map.insert(
         "recursive".into(),
-        ToolTipsData::new(
+        TooltipsData::new(
             "Recursive",
             vec![
                 TooltipsContent::String("Tooltips can be ".into()),

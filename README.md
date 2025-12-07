@@ -6,7 +6,7 @@
 A library for creating headless(unstyled) tooltips that can be arbitrarily nested and highlight other nodes.
 
 ## Features
-This library strives to handle the logic behind common tooltip features, while you focus on your unique data and design needs
+This library strives to handle the logic behind common tooltip features, while you focus on your unique data and design needs.
 
 - Tooltips can be spawned by hovering or by user pressing the middle mouse button, your choice which and you can change at runtime.
 - Nesting to arbitrary levels, the only limitation is memory.
@@ -82,10 +82,17 @@ Or
 
 ### Style your tooltips
 
-Check the examples files for examples
+Check the examples files for examples.
 
 ## Limitations
 
 This plugin assumes a single fullscreen and camera is used.
 
-using this library when not fullscreen will likely trigger the links at the wrong time, this limitation will be removed once textspans support observers
+Using this library when not fullscreen will likely trigger the links at the wrong time, this limitation will be removed once textspans support observers.
+
+
+## `Bevy` compatability
+
+| `bevy` | `bevy_nested_tooltips` |
+|-------|-------------------|
+| 0.17  | 0.1      |

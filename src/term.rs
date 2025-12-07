@@ -61,9 +61,9 @@ impl TooltipTermLinkRecursive {
     }
 }
 
-/// This triggers for `ToolTip` links
-/// If configured to display on hover this will add a timer that unless pointer moves
-/// away from will spawn a `ToolTip`
+/// This triggers for [`Tooltip`] links
+/// If configured to display on hover this will add a [`TooltipLinkTimer`] that unless pointer moves
+/// away from will spawn a `Tooltip`
 pub(crate) fn hover_time_spawn(
     hover: On<TextHoveredOver>,
     tooltip_configuration: Res<TooltipConfiguration>,

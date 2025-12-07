@@ -9,8 +9,9 @@ use bevy_ecs::{
     hierarchy::ChildOf,
     lifecycle::{Add, HookContext},
     observer::On,
-    query::{Or, QueryData, With, Without},
+    query::{Changed, Or, QueryData, With, Without},
     resource::Resource,
+    schedule::IntoScheduleConfigs,
     system::{Commands, Query, Res},
     world::World,
 };
@@ -20,6 +21,7 @@ use bevy_picking::{
 };
 use bevy_text::TextLayoutInfo;
 use bevy_ui::{ComputedNode, RelativeCursorPosition, widget::Text};
+use bevy_window::Window;
 use tiny_bail::prelude::*;
 
 use crate::{TooltipHighlightLink, TooltipTermLink, TooltipTermLinkRecursive, TooltipsNested};
@@ -30,7 +32,7 @@ pub(crate) struct TextObservePlugin;
 impl Plugin for TextObservePlugin {
     fn build(&self, app: &mut bevy_app::App) {
         app.add_systems(PreStartup, setup_component_hooks)
-            .add_systems(Update, tooltip_links)
+            .add_systems(Update, tooltip_links.run_if(mouse_moved))
             .add_observer(term_link_textspan_parent)
             .add_observer(recursive_term_link_textspan_parent)
             .add_observer(highlight_link_textspan_parent);
@@ -51,7 +53,7 @@ pub(crate) struct WasHoveringText {
 
 /// Text has been hovered in the tooltip
 ///
-/// This only works on entities with the `ToolTipListenTextSpan` component
+/// This only works on entities with the [`ToolTipListenTextSpan`] component
 /// This can retrun incorrect results if screen is not fullsized
 /// this will be removed when textspans support observers
 #[derive(Debug, EntityEvent)]
@@ -61,7 +63,7 @@ pub struct TextHoveredOver {
 
 /// Text has been hovered out the tooltip
 ///
-/// This only works on entities with the `ToolTipListenTextSpan` component
+/// This only works on entities with the [`ToolTipListenTextSpan`] component
 /// This can retrun incorrect results if screen is not fullsized
 /// this will be removed when textspans support observers
 #[derive(Debug, EntityEvent)]
@@ -71,7 +73,7 @@ pub struct TextHoveredOut {
 
 /// Middle mouse button has been pressed on text in the tooltip
 ///
-/// This only works on entities with the `ToolTipListenTextSpan` component
+/// This only works on entities with the [`ToolTipListenTextSpan`] component
 /// This can retrun incorrect results if screen is not fullsized
 /// this will be removed when textspans support observers
 #[derive(Debug, EntityEvent)]
@@ -80,11 +82,11 @@ pub(crate) struct TextMiddlePress {
 }
 
 /// This is to mark text as having a textspan that contains a link
-/// RelativeCursorPosition and observers do not work with textspan
+/// `RelativeCursorPosition` and observers do not work with textspan
 /// So will listen to parent instead and check the span
 #[derive(Component, Debug)]
 #[require(RelativeCursorPosition)]
-pub(crate) struct ToolTipListenTextSpan;
+pub struct ToolTipListenTextSpan;
 
 /// Setup to allow middle mouse to work
 fn setup_component_hooks(world: &mut World) {
@@ -96,7 +98,7 @@ fn setup_component_hooks(world: &mut World) {
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
-/// this enables `TextHoveredOver`, `TextHoveredOut` and `TextMiddlePress` to work
+/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work
 pub(crate) fn highlight_link_textspan_parent(
     add: On<Add, TooltipHighlightLink>,
     text_query: Query<Entity, With<Text>>,
@@ -117,7 +119,7 @@ pub(crate) fn highlight_link_textspan_parent(
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
-/// this enables `TextHoveredOver`, `TextHoveredOut` and `TextMiddlePress` to work
+/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work
 pub(crate) fn term_link_textspan_parent(
     add: On<Add, TooltipTermLink>,
     text_query: Query<Entity, With<Text>>,
@@ -138,7 +140,7 @@ pub(crate) fn term_link_textspan_parent(
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
-/// this enables `TextHoveredOver`, `TextHoveredOut` and `TextMiddlePress` to work
+/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work
 pub(crate) fn recursive_term_link_textspan_parent(
     add: On<Add, TooltipTermLinkRecursive>,
     text_query: Query<Entity, With<Text>>,
@@ -158,6 +160,12 @@ pub(crate) fn recursive_term_link_textspan_parent(
     }
 }
 
+/// Check if the mouse has moved, does this by window count only
+/// single window is supported
+fn mouse_moved(window_query: Query<&Window, Changed<Window>>) -> bool {
+    window_query.count() == 1
+}
+
 #[derive(QueryData)]
 struct TooltipLinksQuery {
     entity: Entity,
@@ -166,7 +174,8 @@ struct TooltipLinksQuery {
     relative_cursor: &'static RelativeCursorPosition,
 }
 
-/// Check with the topmost tooltip and see if any text is hovered
+/// Check if any links have been hovered over or hovered out
+/// This check is only done for non tooltpis or topmost UI
 #[allow(clippy::type_complexity)]
 fn tooltip_links(
     //If we don't find anything in top most tooltip we search top level link
