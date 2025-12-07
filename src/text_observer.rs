@@ -15,6 +15,7 @@ use bevy_ecs::{
     system::{Commands, Query, Res},
     world::World,
 };
+use bevy_log::error;
 use bevy_picking::{
     events::{Pointer, Press},
     pointer::PointerButton,
@@ -105,17 +106,21 @@ pub(crate) fn highlight_link_textspan_parent(
     ancestor_query: Query<&ChildOf>,
     mut commands: Commands,
 ) {
+    let add_entity = add.entity;
     // Can already listen to text so no need to do anything else
-    if text_query.contains(add.entity) {
-        r!(commands.get_entity(add.entity)).insert(RelativeCursorPosition::default());
+    if text_query.contains(add_entity) {
+        r!(commands.get_entity(add_entity)).insert(RelativeCursorPosition::default());
         return;
     }
-    for entity in ancestor_query.iter_ancestors(add.entity) {
+    for entity in ancestor_query.iter_ancestors(add_entity) {
         if text_query.contains(entity) {
             r!(commands.get_entity(entity)).insert(ToolTipListenTextSpan);
             return;
         }
     }
+    error!(
+        "{add_entity} has no text component nor any ancestors with a text componet.\nText needs to be inserted concurrently or before any links.\nThis limitation will be removed when textspans support observers"
+    );
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
@@ -126,17 +131,21 @@ pub(crate) fn term_link_textspan_parent(
     ancestor_query: Query<&ChildOf>,
     mut commands: Commands,
 ) {
+    let add_entity = add.entity;
     // Can already listen to text so no need to do anything else
-    if text_query.contains(add.entity) {
-        r!(commands.get_entity(add.entity)).insert(RelativeCursorPosition::default());
+    if text_query.contains(add_entity) {
+        r!(commands.get_entity(add_entity)).insert(RelativeCursorPosition::default());
         return;
     }
-    for entity in ancestor_query.iter_ancestors(add.entity) {
+    for entity in ancestor_query.iter_ancestors(add_entity) {
         if text_query.contains(entity) {
             r!(commands.get_entity(entity)).insert(ToolTipListenTextSpan);
             return;
         }
     }
+    error!(
+        "{add_entity} has no text component nor any ancestors with a text componet.\nText needs to be inserted concurrently or before any links.\nThis limitation will be removed when textspans support observers"
+    );
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
@@ -147,17 +156,21 @@ pub(crate) fn recursive_term_link_textspan_parent(
     ancestor_query: Query<&ChildOf>,
     mut commands: Commands,
 ) {
+    let add_entity = add.entity;
     // Can already listen to text so no need to do anything else
-    if text_query.contains(add.entity) {
-        r!(commands.get_entity(add.entity)).insert(RelativeCursorPosition::default());
+    if text_query.contains(add_entity) {
+        r!(commands.get_entity(add_entity)).insert(RelativeCursorPosition::default());
         return;
     }
-    for entity in ancestor_query.iter_ancestors(add.entity) {
+    for entity in ancestor_query.iter_ancestors(add_entity) {
         if text_query.contains(entity) {
             r!(commands.get_entity(entity)).insert(ToolTipListenTextSpan);
             return;
         }
     }
+    error!(
+        "{add_entity} has no text component nor any ancestors with a text componet.\nText needs to be inserted concurrently or before any links.\nThis limitation will be removed when textspans support observers"
+    );
 }
 
 /// Check if the mouse has moved, does this by window count only

@@ -1081,7 +1081,7 @@ checksum = "7ef8e4b7e61dfe7719bb03c884dc270cd46a82efb40f93e9933b990c5c190c59"
 
 [[package]]
 name = "bevy_nested_tooltips"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",

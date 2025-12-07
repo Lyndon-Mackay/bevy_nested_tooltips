@@ -1,6 +1,6 @@
 [package]
 name = "bevy_nested_tooltips"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2024"
 description = "Nested Tooltips for the bevy game engine"
 repository = "https://github.com/Lyndon-Mackay/bevy_nested_tooltips"
