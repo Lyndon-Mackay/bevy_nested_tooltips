@@ -1,6 +1,6 @@
 [package]
 name = "bevy_nested_tooltips"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 description = "Nested Tooltips for the bevy game engine"
 repository = "https://github.com/Lyndon-Mackay/bevy_nested_tooltips"
@@ -23,9 +23,27 @@ bevy_time = { version = "0.17", default-features = false }
 bevy_transform = { version = "0.17", default-features = false }
 bevy_ui = { version = "0.17", default-features = false }
 bevy_window = { version = "0.17", default-features = false }
-tiny_bail = "0.7"
+tiny_bail = {version = "0.7",default-features = false}
 
 
 [dev-dependencies]
 bevy = "0.17"
 bevy-inspector-egui = "0.35"
+
+
+[features]
+default = ["tiny_bail/tracing","tiny_bail/warn"]
+
+# Set the log level to `trace`.
+trace = ["tiny_bail/trace"]
+# Set the log level to `debug`.
+debug = ["tiny_bail/debug"]
+# Set the log level to `info`.
+info = ["tiny_bail/info"]
+# Set the log level to `warn`.
+warn = ["tiny_bail/warn"]
+# Set the log level to `error`.
+error = ["tiny_bail/error"]
+
+tracing = ["tiny_bail/tracing"]
+log = ["tiny_bail/log"]

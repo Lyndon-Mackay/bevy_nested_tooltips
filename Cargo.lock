@@ -1081,7 +1081,7 @@ checksum = "7ef8e4b7e61dfe7719bb03c884dc270cd46a82efb40f93e9933b990c5c190c59"
 
 [[package]]
 name = "bevy_nested_tooltips"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
@@ -4784,6 +4784,7 @@ version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ba9f3c9f90a216158fbb3552b4e3352739f2a9df25c9ba63690f3125b76e027"
 dependencies = [
+ "log",
  "tracing",
 ]
 
