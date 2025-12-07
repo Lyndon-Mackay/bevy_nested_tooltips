@@ -95,4 +95,4 @@ Using this library when not fullscreen will likely trigger the links at the wron
 
 | `bevy` | `bevy_nested_tooltips` |
 |-------|-------------------|
-| 0.17  | 0.1      |
+| 0.17  | 0.1-0.2      |
