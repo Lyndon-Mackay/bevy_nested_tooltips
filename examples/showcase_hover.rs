@@ -253,7 +253,6 @@ fn query_style(
 // When highlighted change the colour, how you highlight is up to you
 // maybe fancy animations
 fn add_highlight(side: On<Add, TooltipHighlighting>, mut commands: Commands) {
-    // info!("style");
     commands
         .get_entity(side.entity)
         .unwrap()
@@ -262,7 +261,6 @@ fn add_highlight(side: On<Add, TooltipHighlighting>, mut commands: Commands) {
 
 // remove highlighting
 fn remove_highlight(side: On<Remove, TooltipHighlighting>, mut commands: Commands) {
-    // info!("style");
     commands
         .get_entity(side.entity)
         .unwrap()

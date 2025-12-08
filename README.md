@@ -84,8 +84,53 @@ Or
 ```
 
 ### Style your tooltips
+Create an observer with at least these parameters.
+```rust
+fn style_tooltip(
+    new_tooltip: On<TooltipSpawned>,
+    tooltip_info: TooltipEntitiesParam,
+    mut commands: Commands,
+)
+```
+Fetch the data.
+```rust
+    let tooltip_info = tooltip_info
+        .tooltip_child_entities(new_tooltip.entity)
+        .unwrap();
+```
+Use the entities to style your node using commands or mutatable queries!
+```rust
+    commands
+        .get_entity(tooltip_info.title_node)
+        .unwrap()
+        .insert(Node {
+            display: Display::Flex,
+            justify_content: JustifyContent::Center,
+            width: Val::Percent(100.),
+            ..Default::default()
+        });
+```
 
-Check the examples files for examples.
+#### React to changes.
+
+```rust
+// When highlighted change the colour, how you highlight is up to you
+// maybe fancy animations
+fn add_highlight(side: On<Add, TooltipHighlighting>, mut commands: Commands) {
+    commands
+        .get_entity(side.entity)
+        .unwrap()
+        .insert(BackgroundColor(GREEN.into()));
+}
+
+// remove highlighting
+fn remove_highlight(side: On<Remove, TooltipHighlighting>, mut commands: Commands) {
+    commands
+        .get_entity(side.entity)
+        .unwrap()
+        .insert(BackgroundColor(BLUE.into()));
+}
+```
 
 ## Limitations
 
