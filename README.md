@@ -1,6 +1,6 @@
 # Bevy Nested Tooltips
 [<img alt="github" src="https://img.shields.io/badge/github-lyndon-mackay/bevy_nested_tooltips?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/Lyndon-Mackay/bevy_nested_tooltips/)
-[<img alt="crates.io" src="https://img.shields.io/crates/v/bevy_nested_tooltips.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/https://crates.io/crates/bevy_nested_tooltips)
+[<img alt="crates.io" src="https://img.shields.io/crates/v/bevy_nested_tooltips.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/bevy_nested_tooltips)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-bevy_nested_tooltips-66c2a5?style=for-the-badge&labelColor=555555&logo=docs.rs" height="20">](https://docs.rs/bevy_nested_tooltips)
 
 A library for creating headless(unstyled) tooltips that can be arbitrarily nested and highlight other nodes.
