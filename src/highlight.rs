@@ -26,12 +26,12 @@ impl Plugin for HighlightPlugin {
     }
 }
 
-/// Inserts [`TooltipHighlighting`] onto entities that has a component [`TooltipHighlight`] with the same string key
+/// Inserts [`TooltipHighlighting`] onto entities that has a component [`TooltipHighlight`] with the same string key.
 #[derive(Debug, Component)]
 pub struct TooltipHighlightLink(pub String);
 
 /// When a [`TooltipHighlightLink`] has been activated and shares the same string with this component
-/// [`TooltipHighlighting`] will be added to this entity
+/// [`TooltipHighlighting`] will be added to this entity.
 #[derive(Debug, Component)]
 pub struct TooltipHighlight(pub String);
 
@@ -53,7 +53,7 @@ struct HighlightNodesQuery {
 }
 
 /// When text that highlights a node is moused over this will add marker components
-/// to the user so they can then apply highlighting logic
+/// to the user so they can then apply highlighting logic.
 fn highlight_activate(
     hover: On<TextHoveredOver>,
     highlight_nodes_link_query: Query<&TooltipHighlightLink>,
@@ -71,7 +71,7 @@ fn highlight_activate(
 }
 
 /// When text that highlights a node is no longer moused over this will remove marker components
-/// the user can then remove highlighting logic
+/// the user can then remove highlighting logic.
 fn highlight_deactivate(
     hover: On<TextHoveredOut>,
     highlight_nodes_link_query: Query<&TooltipHighlightLink>,

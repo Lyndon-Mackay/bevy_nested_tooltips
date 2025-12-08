@@ -25,14 +25,9 @@ fn main() -> AppExit {
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, spawn_scene)
-        // Note having that many observers is not neccessary
-        // just it's clearer what each example does
-        // Also easier to prototype
+        // you can style using observers
         .add_observer(style_tooltip)
-        .add_observer(center_title)
-        .add_observer(title_font)
-        .add_observer(term_font)
-        // Look at query style to get this done without using so many observers
+        // Or you can style using a query with a built in sys param
         .add_observer(query_style)
         // These observers are more necessary to react to user
         .add_observer(add_highlight)
@@ -211,10 +206,19 @@ fn style_tooltip(tooltip: On<Add, Tooltip>, mut commands: Commands) {
         .insert((BackgroundColor(ORANGE.into()), BorderColor::all(WHITE)));
 }
 
-// Style and center the title here
-fn center_title(title_node: On<Add, TooltipTitleNode>, mut commands: Commands) {
+// If you prefer you can listen to this observer and style via querying
+// Static styling can be done entirely here
+fn query_style(
+    new_tooltip: On<TooltipSpawned>,
+    tooltip_info: TooltipEntitiesParam,
+    mut commands: Commands,
+) {
+    let tooltip_info = tooltip_info
+        .tooltip_child_entities(new_tooltip.entity)
+        .unwrap();
+
     commands
-        .get_entity(title_node.entity)
+        .get_entity(tooltip_info.title_node)
         .unwrap()
         .insert(Node {
             display: Display::Flex,
@@ -222,44 +226,27 @@ fn center_title(title_node: On<Add, TooltipTitleNode>, mut commands: Commands) {
             width: Val::Percent(100.),
             ..Default::default()
         });
-}
 
-fn title_font(title_text: On<Add, TooltipTitleText>, mut commands: Commands) {
     commands
-        .get_entity(title_text.entity)
+        .get_entity(tooltip_info.title_text)
         .unwrap()
         .insert(TextFont {
             font_size: 40.,
             ..Default::default()
         });
-}
 
-fn term_font(
-    term_text: On<Add, (TooltipTermLink, TooltipTermLinkRecursive)>,
-    mut commands: Commands,
-) {
-    commands
-        .get_entity(term_text.entity)
-        .unwrap()
-        .insert(TextColor(BLUE.into()));
-}
+    for highlight_entity in tooltip_info.highlight_texts {
+        commands
+            .get_entity(highlight_entity)
+            .unwrap()
+            .insert(TextColor(GREEN.into()));
+    }
 
-// If you prefer you can listen to this observer and style via querying
-// Static styling can be done entirely here
-fn query_style(
-    new_tooltip: On<TooltipSpawned>,
-    ancestor_query: Query<&ChildOf>,
-    highlight_query: Query<Entity, With<TooltipHighlightLink>>,
-    mut commands: Commands,
-) {
-    for current_highlight in highlight_query {
-        if new_tooltip.entity == ancestor_query.root_ancestor(current_highlight) {
-            commands
-                .get_entity(current_highlight)
-                .unwrap()
-                .insert(TextColor(GREEN.into()));
-            return;
-        }
+    for term_entity in tooltip_info.term_texts {
+        commands
+            .get_entity(term_entity)
+            .unwrap()
+            .insert(TextColor(BLUE.into()));
     }
 }
 

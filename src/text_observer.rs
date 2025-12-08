@@ -25,7 +25,7 @@ use tiny_bail::prelude::*;
 
 use crate::{TooltipHighlightLink, TooltipTermLink, TooltipTermLinkRecursive, TooltipsNested};
 
-/// Plugin to bridge gap until text spans support observers
+/// Plugin to bridge gap until text spans support observers.
 pub(crate) struct TextObservePlugin;
 
 impl Plugin for TextObservePlugin {
@@ -39,7 +39,7 @@ impl Plugin for TextObservePlugin {
 }
 
 /// Used to track for hovering when resource is present mouse was located
-/// on the rect last frame
+/// on the rect last frame.
 #[derive(Resource, Clone, Copy)]
 pub(crate) struct WasHoveringText {
     /// Actual entity that we hovered
@@ -50,11 +50,11 @@ pub(crate) struct WasHoveringText {
     pub(crate) relative_cursor_entity: Entity,
 }
 
-/// Text has been hovered in the tooltip
+/// Text has been hovered in the tooltip.
 ///
 /// This only works on entities with the [`ToolTipListenTextSpan`] component
 /// This can retrun incorrect results if screen is not fullsized
-/// this will be removed when textspans support observers
+/// this will be removed when textspans support observers.
 #[derive(Debug, EntityEvent)]
 pub struct TextHoveredOver {
     pub(crate) entity: Entity,
@@ -64,7 +64,7 @@ pub struct TextHoveredOver {
 ///
 /// This only works on entities with the [`ToolTipListenTextSpan`] component
 /// This can retrun incorrect results if screen is not fullsized
-/// this will be removed when textspans support observers
+/// this will be removed when textspans support observers.
 #[derive(Debug, EntityEvent)]
 pub struct TextHoveredOut {
     pub(crate) entity: Entity,
@@ -74,7 +74,7 @@ pub struct TextHoveredOut {
 ///
 /// This only works on entities with the [`ToolTipListenTextSpan`] component
 /// This can retrun incorrect results if screen is not fullsized
-/// this will be removed when textspans support observers
+/// this will be removed when textspans support observers.
 #[derive(Debug, EntityEvent)]
 pub(crate) struct TextMiddlePress {
     pub(crate) entity: Entity,
@@ -82,7 +82,7 @@ pub(crate) struct TextMiddlePress {
 
 /// This is to mark text as having a textspan that contains a link
 /// `RelativeCursorPosition` and observers do not work with textspan
-/// So will listen to parent instead and check the span
+/// So will listen to parent instead and check the span.
 #[derive(Component, Debug)]
 #[require(RelativeCursorPosition)]
 pub struct ToolTipListenTextSpan;
@@ -97,7 +97,7 @@ fn setup_component_hooks(world: &mut World) {
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
-/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work
+/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work.
 pub(crate) fn highlight_link_textspan_parent(
     add: On<Add, TooltipHighlightLink>,
     text_query: Query<Entity, With<Text>>,
@@ -122,7 +122,7 @@ pub(crate) fn highlight_link_textspan_parent(
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
-/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work
+/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work.
 pub(crate) fn term_link_textspan_parent(
     add: On<Add, TooltipTermLink>,
     text_query: Query<Entity, With<Text>>,
@@ -147,7 +147,7 @@ pub(crate) fn term_link_textspan_parent(
 }
 
 /// Add `RelativeCursorPosition` and `RelativeCursorPosition` to parent
-/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work
+/// this enables [`TextHoveredOver`], [`TextHoveredOut`] and [`TextMiddlePress`] to work.
 pub(crate) fn recursive_term_link_textspan_parent(
     add: On<Add, TooltipTermLinkRecursive>,
     text_query: Query<Entity, With<Text>>,
@@ -180,7 +180,7 @@ struct TooltipLinksQuery {
 }
 
 /// Check if any links have been hovered over or hovered out
-/// This check is only done for non tooltpis or topmost UI
+/// This check is only done for non tooltpis or topmost UI.
 #[allow(clippy::type_complexity)]
 fn tooltip_links(
     //If we don't find anything in top most tooltip we search top level link
@@ -274,7 +274,7 @@ fn tooltip_links(
 
 /// Handles middle mouse button on text spans and forwards with
 /// the correct entity
-/// this only works on topmost tooltip
+/// this only works on topmost tooltip.
 #[allow(clippy::type_complexity)]
 fn middle_mouse_links(
     mut press: On<Pointer<Press>>,

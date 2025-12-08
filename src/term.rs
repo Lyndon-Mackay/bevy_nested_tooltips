@@ -1,4 +1,4 @@
-//! Terms is how tooltips find out what to display given a word to link
+//! Terms is how tooltips find out what to display given a word to link.
 
 use bevy_ecs::{
     component::Component,
@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Place this on a node or text that you want to spawn a Tooltip.
-/// The tooltip displayed will be the contents of `TooltipMap`
+/// The tooltip displayed will be the contents of [`TooltipMap`].
 #[derive(Debug, Component)]
 pub struct TooltipTermLink {
     pub(crate) linked_string: String,
@@ -35,7 +35,7 @@ impl TooltipTermLink {
 
 /// This is used for putting links of tooltips in tooltips
 /// Should not be created by end users but can safely read if you are interested in recursive case
-/// Recursive case may be treated seperately in future such as shorter hover times
+/// Recursive case may be treated seperately in future such as shorter hover times.
 #[derive(Debug, Component)]
 pub struct TooltipTermLinkRecursive {
     pub(crate) parent_entity: Entity,
@@ -43,19 +43,19 @@ pub struct TooltipTermLinkRecursive {
 }
 
 impl TooltipTermLinkRecursive {
-    /// Creates a new link with the given string and parent entity
+    /// Creates a new link with the given string and parent entity.
     pub(crate) fn new(parent_entity: Entity, linked_string: String) -> Self {
         Self {
             parent_entity,
             linked_string,
         }
     }
-    /// The string that is used to look up the term
+    /// The string that is used to look up the term.
     pub fn linked_string(&self) -> &str {
         &self.linked_string
     }
 
-    /// The `ToolTip` that holds this link
+    /// The [`ToolTip`] that holds this link.
     pub fn parent_entity(&self) -> Entity {
         self.parent_entity
     }
@@ -63,7 +63,7 @@ impl TooltipTermLinkRecursive {
 
 /// This triggers for [`Tooltip`] links
 /// If configured to display on hover this will add a [`TooltipLinkTimer`] that unless pointer moves
-/// away from will spawn a `Tooltip`
+/// away from will spawn a [`Tooltip`].
 pub(crate) fn hover_time_spawn(
     hover: On<TextHoveredOver>,
     tooltip_configuration: Res<TooltipConfiguration>,

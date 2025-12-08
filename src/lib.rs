@@ -1,6 +1,7 @@
 pub mod events;
 pub mod highlight;
 pub mod layout;
+pub mod query;
 pub mod term;
 pub mod text_observer;
 
@@ -48,6 +49,7 @@ pub mod prelude {
         events::{TooltipHighlighting, TooltipLocked},
         highlight::{TooltipHighlight, TooltipHighlightLink},
         layout::{TooltipStringText, TooltipTextNode, TooltipTitleNode, TooltipTitleText},
+        query::{TooltipEntites, TooltipEntitiesParam},
         term::{TooltipTermLink, TooltipTermLinkRecursive},
     };
 }
@@ -77,14 +79,14 @@ impl Plugin for NestedTooltipPlugin {
 /// Resource that configures the behaviour of tooltips
 #[derive(Resource, Debug)]
 pub struct TooltipConfiguration {
-    /// See the [`ActivationMethod`] variants
+    /// See the [`ActivationMethod`] variants.
     pub activation_method: ActivationMethod,
 
-    /// Maximum amount of time the `ToolTip` will remain around without user interaction
+    /// Maximum amount of time the `ToolTip` will remain around without user interaction.
     pub interaction_wait_for_time: Duration,
 
     /// The starting z_index this will be incremented for each recursive tooltip
-    /// increase this if tooltips are not on top and you want to fix that
+    /// increase this if tooltips are not on top and you want to fix that.
     pub starting_z_index: i32,
 }
 
@@ -99,12 +101,12 @@ impl Default for TooltipConfiguration {
 }
 
 /// How a tooltip is triggered by default this is done via hovering
-/// Hovering can be further customised
+/// Hovering can be further customised.
 #[derive(Debug, Clone)]
 pub enum ActivationMethod {
-    /// Middle mouse button is pressed
+    /// Middle mouse button is pressed.
     MiddleMouse,
-    /// Mouse is over the `Tooltip` for a duration
+    /// Mouse is over the `Tooltip` for a duration.
     Hover { time: Duration },
 }
 
@@ -117,8 +119,8 @@ impl Default for ActivationMethod {
 }
 
 /// Default node for the [`Tooltip`] node use this to layout your tooltips without
-/// accidentally moving it's position
-/// This resource is initialised on adding plugin
+/// accidentally moving it's position.
+/// This resource is initialised on adding plugin.
 #[derive(Resource, Debug)]
 pub struct TooltipReference {
     /// Top level Node this will be copied to the [`Tooltip`] positions will be overwritten
@@ -150,7 +152,7 @@ impl Default for TooltipReference {
 
 /// Indicates this entity is a tooltip and stores what spawned it
 /// The entity that spawned it is blocked from spawning another tooltip
-/// until this one is finished to prevent tooltip jumping around
+/// until this one is finished to prevent tooltip jumping around.
 #[derive(Debug, Component)]
 #[require(RelativeCursorPosition)]
 pub struct Tooltip {
@@ -165,41 +167,41 @@ impl Tooltip {
 }
 
 /// When the cursor has gotten sufficently inside the tooltip
-/// leaving will now despawn this tooltip
+/// leaving will now despawn this tooltip.
 #[derive(Debug, Component)]
 struct ToolTipDebounced;
 
-/// This is sent when a [`Tooltip`] is spawned
+/// This is sent when a [`Tooltip`] is spawned.
 #[derive(Debug, EntityEvent)]
 pub struct TooltipSpawned {
     pub entity: Entity,
 }
 
 /// If the user hasn't hovered on the tooltip in the specified time despawn it
-/// time is configured in [`TooltipConfiguration`]
+/// time is configured in [`TooltipConfiguration`].
 #[derive(Debug, Component)]
 pub struct TooltipWaitForHover {
     timer: Timer,
 }
 
-/// [`Tooltip`] that spawned nested from this one
+/// [`Tooltip`] that spawned nested from this one.
 #[derive(Debug, Component)]
 #[relationship_target(relationship = TooltipsNestedOf)]
 pub struct TooltipsNested(Entity);
 
-/// This [`Tooltip`] is nested under the entities `Tooltip`
+/// This [`Tooltip`] is nested under the entities [`Tooltip`].
 #[derive(Debug, Component)]
 #[relationship(relationship_target = TooltipsNested)]
 pub struct TooltipsNestedOf(Entity);
 
 /// Timer added on creating a [`Tooltip`], if the user does not mouseover the tooltip in that
-/// time then it will be despawned
+/// time then it will be despawned.
 #[derive(Debug, Component)]
 pub struct TooltipLinkTimer {
     timer: Timer,
 }
 
-/// Sent when link has been hovered long enough to spawn [`ToolTip`]
+/// Sent when link has been hovered long enough to spawn [`ToolTip`].
 #[derive(Event)]
 struct TooltipLinkTimeElapsed {
     term_entity: Entity,
@@ -207,20 +209,20 @@ struct TooltipLinkTimeElapsed {
 
 /// The data of your tooltips.
 /// When a [`TooltipTermLink`] is activated the string inside of it will be used as key
-/// for the hashmap and its result will populate the tooltip
+/// for the hashmap and its result will populate the tooltip.
 ///
-/// See [`Tooltipsdata`]
+/// See [`Tooltipsdata`].
 #[derive(Resource, Debug, Deref, DerefMut, Clone)]
 pub struct TooltipMap {
     pub map: HashMap<String, TooltipsData>,
 }
 
-/// What is to be included in the [`Tooltip`]
+/// What is to be included in the [`Tooltip`].
 #[derive(Debug, Clone)]
 pub struct TooltipsData {
-    /// The title at the top of the tooltips
+    /// The title at the top of the tooltips.
     pub title: String,
-    /// The rest of the text
+    /// The rest of the text.
     pub content: Vec<TooltipsContent>,
 }
 
@@ -235,14 +237,14 @@ impl TooltipsData {
 
 /// This makes up a part of the tooltips text content.
 /// Each variant outputs text but with different behaviours
-/// See each variants documenation for details
+/// See each variants documenation for details.
 #[derive(Debug, Clone)]
 pub enum TooltipsContent {
-    /// Displays normal text for the user
+    /// Displays normal text for the user.
     String(String),
-    /// Nested information that can spawn's a child tooltip, used as key for [`TooltipMap`]
+    /// Nested information that can spawn's a child tooltip, used as key for [`TooltipMap`].
     Term(String),
-    /// Adds a highlight Component to all tooltips with [`TooltipHighlight`]
+    /// Adds a highlight Component to all tooltips with [`TooltipHighlight`].
     Highlight(String),
 }
 
@@ -291,7 +293,7 @@ struct HoverLinkQuery {
     timer: Option<&'static mut TooltipLinkTimer>,
 }
 
-/// Removes hover timer when user's pointer has left
+/// Removes hover timer when user's pointer has left.
 fn hover_cancel_spawn(hover: On<TextHoveredOut>, mut commands: Commands) {
     r!(commands.get_entity(hover.entity)).remove::<TooltipLinkTimer>();
 }
@@ -312,7 +314,7 @@ struct HoverWaitQuery {
     wait_for: &'static mut TooltipWaitForHover,
 }
 
-/// Tick timers and if they finish spawn/despawn the releveant tooltip
+/// Tick timers and if they finish spawn/despawn the releveant tooltip.
 fn tick_timers(
     mut links_query: Query<SpawnLinksQuery>,
     mut wait_for_query: Query<HoverWaitQuery>,
@@ -344,7 +346,7 @@ fn tick_timers(
     }
 }
 
-/// Triggered when timer is done, fetch additional data to spawn `ToolTip`
+/// Triggered when timer is done, fetch additional data to spawn [`ToolTip`].
 #[allow(clippy::too_many_arguments)]
 fn spawn_time_done(
     term: On<TooltipLinkTimeElapsed>,
@@ -378,7 +380,7 @@ struct TooltipDebounceQuery {
 
 /// This is to debounce the cursor when it lands on the
 /// tooltip, without this it is too easy to accidentally
-/// close the tooltip
+/// close the tooltip.
 fn hover_debounce(
     hover: On<Pointer<Move>>,
     tooltip_query: Query<TooltipDebounceQuery>,
@@ -413,7 +415,7 @@ struct TooltipQuery {
     debounced: Has<ToolTipDebounced>,
 }
 
-/// When user mouses out of `ToolTip` despawn it unless it has a nested tooltip
+/// When user mouses out of [`ToolTip`] despawn it unless it has a nested tooltip.
 fn hover_despawn(
     hover: On<Pointer<Out>>,
     tooltip_query: Query<TooltipQuery>,
@@ -432,7 +434,7 @@ fn hover_despawn(
     r!(commands.get_entity(hover.entity)).despawn();
 }
 
-/// When user has pressed the middle mouse button on a [`TooltipLink`]
+/// When user has pressed the middle mouse button on a [`TooltipLink`].
 #[allow(clippy::too_many_arguments)]
 fn middle_mouse_spawn(
     press: On<TextMiddlePress>,
@@ -459,8 +461,8 @@ fn middle_mouse_spawn(
     }
 }
 
-/// Common logic to spawn `ToolTip` should be called when activation method has been satisfied
-/// This also blocks tooltips from spawning if entity has already spawned one
+/// Common logic to spawn [`ToolTip`] should be called when activation method has been satisfied
+/// This also blocks tooltips from spawning if entity has already spawned one.
 #[allow(clippy::too_many_arguments)]
 fn spawn_tooltip(
     term_entity: Entity,
@@ -575,7 +577,7 @@ fn spawn_tooltip(
     commands.trigger(TooltipSpawned { entity: tooltip_id });
 }
 
-/// Poistions the `ToolTip` relative to the cursor
+/// Poistions the [`ToolTip`] relative to the cursor.
 fn position_tooltip(
     window_query: Query<'_, '_, &Window>,
     tooltip_reference: Res<'_, TooltipReference>,
@@ -617,7 +619,7 @@ struct LockTooltipQuery {
     locked: Has<TooltipLocked>,
 }
 
-/// When user presses middle mouse button add or remove [`TooltipLocked`]
+/// When user presses middle mouse button add or remove [`TooltipLocked`].
 fn toggle_lock(
     press: On<Pointer<Press>>,
     tooltip_query: Query<LockTooltipQuery>,
