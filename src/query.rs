@@ -1,5 +1,5 @@
 //! Contains the convenienece queries and systemparams to easily get the
-//! entities for each part of a single [`Tooltip`].
+//! entities for each part of a single [`crate::Tooltip`].
 
 use bevy_ecs::{
     entity::Entity,
@@ -15,9 +15,9 @@ use crate::{
     term::TooltipTermLinkRecursive,
 };
 
-/// For a [`Tooltip`] these are descendent parts that make up it.
+/// For a [`crate::Tooltip`] these are descendent parts that make up it.
 /// This assumes and does not check that the tooltip is in good order.
-pub struct TooltipEntites {
+pub struct TooltipEntities {
     /// The entity of the node holding the title text.
     /// [`TooltipTitleNode`]
     /// Tooltip should not have more then one.
@@ -47,7 +47,7 @@ pub struct TooltipEntites {
 
 #[derive(SystemParam)]
 /// Add this to your query parameters to conveniently get widgets child entities by component.
-/// use [`tooltip_child_entities`] method to gather the information.
+/// use `tooltip_child_entities` method to gather the information.
 pub struct TooltipEntitiesParam<'w, 's> {
     ancestor_query: Query<'w, 's, &'static ChildOf>,
 
@@ -62,11 +62,11 @@ pub struct TooltipEntitiesParam<'w, 's> {
 }
 
 impl<'w, 's> TooltipEntitiesParam<'w, 's> {
-    /// Given a [`Tooltip`] entity it gather all child Entities and
+    /// Given a [`crate::Tooltip`] entity it gather all child Entities and
     /// store it under a [`TooltipEntities`] struct.
     ///
     /// Result will be none if the entity doesn't have expected children.
-    pub fn tooltip_child_entities(self, entity: Entity) -> Option<TooltipEntites> {
+    pub fn tooltip_child_entities(self, entity: Entity) -> Option<TooltipEntities> {
         let mut title_node = None;
         for title in self.title_node_query {
             if entity == self.ancestor_query.root_ancestor(title) {
@@ -110,7 +110,7 @@ impl<'w, 's> TooltipEntitiesParam<'w, 's> {
                 highlight_texts.push(highlight);
             }
         }
-        Some(TooltipEntites {
+        Some(TooltipEntities {
             title_node: r!(title_node),
             title_text: r!(title_text),
             tooltip_text_node: r!(text_node),

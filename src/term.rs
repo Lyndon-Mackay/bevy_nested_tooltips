@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Place this on a node or text that you want to spawn a Tooltip.
-/// The tooltip displayed will be the contents of [`TooltipMap`].
+/// The tooltip displayed will be the contents of [`crate::TooltipMap`].
 #[derive(Debug, Component)]
 pub struct TooltipTermLink {
     pub(crate) linked_string: String,
@@ -55,15 +55,15 @@ impl TooltipTermLinkRecursive {
         &self.linked_string
     }
 
-    /// The [`ToolTip`] that holds this link.
+    /// The [`crate::Tooltip`] that holds this link.
     pub fn parent_entity(&self) -> Entity {
         self.parent_entity
     }
 }
 
-/// This triggers for [`Tooltip`] links
-/// If configured to display on hover this will add a [`TooltipLinkTimer`] that unless pointer moves
-/// away from will spawn a [`Tooltip`].
+/// This triggers for [`crate::Tooltip`] links
+/// If configured to display on hover this will add a [`crate::TooltipLinkTimer`] that unless pointer moves
+/// away from will spawn a [`crate::Tooltip`].
 pub(crate) fn hover_time_spawn(
     hover: On<TextHoveredOver>,
     tooltip_configuration: Res<TooltipConfiguration>,
