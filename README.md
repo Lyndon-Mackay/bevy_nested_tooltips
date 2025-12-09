@@ -6,7 +6,7 @@
 A library for creating headless(unstyled) tooltips that can be arbitrarily nested and highlight other nodes.
 
 (Colours are chosen by end user!)
-![](https://github.com/Lyndon-Mackay/bevy_nested_tooltips/blob/main/demonstration.gif)
+![](./demonstration.gif)
 
 ## Features
 This library strives to handle the logic behind common tooltip features, while you focus on your unique data and design needs.
