@@ -9,6 +9,9 @@ use bevy_window::WindowMode;
 #[derive(Component)]
 struct LockMessage;
 
+#[derive(Component)]
+struct ConfigActivationText;
+
 fn main() -> AppExit {
     App::new()
         .add_plugins((
@@ -25,6 +28,7 @@ fn main() -> AppExit {
         // .add_plugins(EguiPlugin::default())
         // .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, spawn_scene)
+        .add_systems(Update, update_settings)
         // you can style using observers
         .add_observer(style_tooltip)
         // Or you can style using a query with a built in sys param
@@ -86,7 +90,7 @@ fn spawn_scene(mut commands: Commands) {
                         TooltipTermLink::new("tooltip"),
                         TextColor(BLUE.into())
                     ),
-                    TextSpan::new(" hover over it! "),
+                    TextSpan::new(" press middle mouse over it! "),
                     (
                         TextSpan::new("top"),
                         TooltipHighlightLink("top".into()),
@@ -99,6 +103,18 @@ fn spawn_scene(mut commands: Commands) {
                         TextColor(GREEN.into())
                     ),
                 ]
+            ),
+            (
+                Node {
+                    width: Val::Percent(100.),
+                    ..Default::default()
+                },
+                BackgroundColor(YELLOW_GREEN.into()),
+                Text::new("Press 'a' to change me between hover and middle mouse "),
+                children![(
+                    TextSpan::new("I am currently on hover"),
+                    ConfigActivationText
+                )]
             )
         ],
     ));
@@ -114,6 +130,10 @@ fn spawn_scene(mut commands: Commands) {
             vec![
                 TooltipsContent::String("A way to give users infomation can be ".into()),
                 TooltipsContent::Term("recursive".into()),
+                TooltipsContent::String(" ".into()),
+                TooltipsContent::Highlight("left".into()),
+                TooltipsContent::String(" ".into()),
+                TooltipsContent::Highlight("right".into()),
                 TooltipsContent::String(" Press middle mouse button to lock me. ".into()),
             ],
         ),
@@ -297,5 +317,27 @@ fn display_unlocking(
         .find(|item| item.1.0 == lock.entity)
     {
         commands.get_entity(entity).unwrap().despawn();
+    }
+}
+
+fn update_settings(
+    keycode: Res<ButtonInput<KeyCode>>,
+    mut activation_text_query: Query<&mut TextSpan, With<ConfigActivationText>>,
+    mut config: ResMut<TooltipConfiguration>,
+) {
+    let activation = config.activation_method.clone();
+    if keycode.just_pressed(KeyCode::KeyA) {
+        for mut text in &mut activation_text_query {
+            match activation {
+                ActivationMethod::MiddleMouse => {
+                    text.0 = "I am currently on hover".to_string();
+                    config.activation_method = ActivationMethod::default();
+                }
+                ActivationMethod::Hover { .. } => {
+                    config.activation_method = ActivationMethod::MiddleMouse;
+                    text.0 = "I am currently on middle mouse".to_string()
+                }
+            }
+        }
     }
 }
