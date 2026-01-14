@@ -136,8 +136,6 @@ fn remove_highlight(side: On<Remove, TooltipHighlighting>, mut commands: Command
 
 This plugin assumes a single fullscreen and camera is used.
 
-Using this library when not fullscreen will likely trigger the links at the wrong time, this limitation will be removed once textspans support observers.
-
 
 ## `Bevy` compatability
 
