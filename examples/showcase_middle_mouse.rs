@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_color::palettes::css::{BLUE, GREEN, ORANGE, ORANGE_RED, WHITE, YELLOW_GREEN};
-use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
+// use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_nested_tooltips::prelude::*;
 use bevy_platform::collections::HashMap;
 use bevy_ui::RelativeCursorPosition;
@@ -22,8 +22,8 @@ fn main() -> AppExit {
             }),
             NestedTooltipPlugin,
         ))
-        .add_plugins(EguiPlugin::default())
-        .add_plugins(WorldInspectorPlugin::new())
+        // .add_plugins(EguiPlugin::default())
+        // .add_plugins(WorldInspectorPlugin::new())
         .add_systems(Startup, spawn_scene)
         // you can style using observers
         .add_observer(style_tooltip)
@@ -156,7 +156,7 @@ fn edge_panels(commands: &mut Commands) {
     commands.spawn((
         left_node,
         BackgroundColor(BLUE.into()),
-        TooltipHighlight("sides".into()),
+        TooltipHighlight(vec!["left".into(), "sides".into()]),
     ));
     let right_node = Node {
         position_type: PositionType::Absolute,
@@ -169,7 +169,7 @@ fn edge_panels(commands: &mut Commands) {
     commands.spawn((
         right_node,
         BackgroundColor(BLUE.into()),
-        TooltipHighlight("sides".into()),
+        TooltipHighlight(vec!["right".into(), "sides".into()]),
     ));
 
     let top_node = Node {
@@ -184,7 +184,7 @@ fn edge_panels(commands: &mut Commands) {
     commands.spawn((
         top_node,
         BackgroundColor(BLUE.into()),
-        TooltipHighlight("top".into()),
+        TooltipHighlight(vec!["top".into()]),
     ));
 
     let bottom_node = Node {
@@ -198,7 +198,7 @@ fn edge_panels(commands: &mut Commands) {
     commands.spawn((
         bottom_node,
         BackgroundColor(BLUE.into()),
-        TooltipHighlight("bottom".into()),
+        TooltipHighlight(vec!["bottom".into()]),
     ));
 }
 

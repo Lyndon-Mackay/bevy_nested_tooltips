@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0
+- Update to bevy 0.18
+- Observers to only spawned for their usecase
+- Use new 0.18 textspan observers instead of crates emulation
+- The default time until despawn has been decreased
+
 ## 0.2.4
 - New systemparams for getting tooltips parts.
 - Documentation fixes, mostly missing trailing fullstops.

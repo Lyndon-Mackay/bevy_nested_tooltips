@@ -6,12 +6,11 @@ use bevy_ecs::{
     observer::On,
     system::{Commands, Res},
 };
+use bevy_picking::events::{Over, Pointer};
 use bevy_time::{Timer, TimerMode};
 use tiny_bail::prelude::*;
 
-use crate::{
-    ActivationMethod, TooltipConfiguration, TooltipLinkTimer, text_observer::TextHoveredOver,
-};
+use crate::{ActivationMethod, TooltipConfiguration, TooltipLinkTimer};
 
 /// Place this on a node or text that you want to spawn a Tooltip.
 /// The tooltip displayed will be the contents of [`crate::TooltipMap`].
@@ -65,7 +64,7 @@ impl TooltipTermLinkRecursive {
 /// If configured to display on hover this will add a [`crate::TooltipLinkTimer`] that unless pointer moves
 /// away from will spawn a [`crate::Tooltip`].
 pub(crate) fn hover_time_spawn(
-    hover: On<TextHoveredOver>,
+    hover: On<Pointer<Over>>,
     tooltip_configuration: Res<TooltipConfiguration>,
     mut commands: Commands,
 ) {

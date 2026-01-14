@@ -68,7 +68,7 @@
 //! ```
 //! ### Add links to relevant entities
 //! ```rust
-//! TooltipHighlight("sides".into()),
+//! TooltipHighlight(vec!["sides".into()]),
 //! ```
 //! Or
 //! ```rust
@@ -129,7 +129,6 @@ pub mod highlight;
 pub mod layout;
 pub mod query;
 pub mod term;
-pub mod text_observer;
 
 use std::time::Duration;
 
@@ -141,14 +140,13 @@ use bevy_ecs::{
     entity::Entity,
     event::{EntityEvent, Event},
     lifecycle::HookContext,
-    observer::On,
-    query::{AnyOf, Has, QueryData},
+    observer::{Observer, On},
+    query::{AnyOf, Has, Or, QueryData, With},
     resource::Resource,
+    schedule::{IntoScheduleConfigs, common_conditions::resource_changed},
     system::{Commands, Query, Res},
     world::World,
 };
-
-use bevy_ecs::spawn::SpawnRelated;
 
 use bevy_log::error;
 use bevy_math::{Rect, Vec2};
@@ -181,23 +179,22 @@ pub mod prelude {
 }
 use prelude::*;
 
-use crate::{
-    highlight::HighlightPlugin,
-    term::hover_time_spawn,
-    text_observer::{TextHoveredOut, TextMiddlePress, TextObservePlugin, WasHoveringText},
-};
+use crate::{highlight::HighlightPlugin, term::hover_time_spawn};
 
 /// This plugin adds systems and resources that makes the logic work.
 pub struct NestedTooltipPlugin;
 
 impl Plugin for NestedTooltipPlugin {
     fn build(&self, app: &mut bevy_app::App) {
-        app.add_plugins(TextObservePlugin)
-            .add_plugins(HighlightPlugin)
+        app.add_plugins(HighlightPlugin)
             .init_resource::<TooltipConfiguration>()
             .init_resource::<TooltipReference>()
             .add_systems(PreStartup, setup_component_hooks)
             .add_systems(Update, tick_timers)
+            .add_systems(
+                Update,
+                update_settings.run_if(resource_changed::<TooltipConfiguration>),
+            )
             .add_observer(spawn_time_done);
     }
 }
@@ -220,7 +217,7 @@ impl Default for TooltipConfiguration {
     fn default() -> Self {
         Self {
             activation_method: Default::default(),
-            interaction_wait_for_time: Duration::from_secs_f64(0.5),
+            interaction_wait_for_time: Duration::from_secs_f64(0.8),
             starting_z_index: 3,
         }
     }
@@ -374,30 +371,70 @@ pub enum TooltipsContent {
     Highlight(String),
 }
 
+/// Marker for Observers related to middle mouse triggering of tooltips
+#[derive(Component)]
+struct NestedTooltipsMiddleMouseObserver;
+
+/// Marker for Observers related to hover triggering of tooltips
+#[derive(Component)]
+struct NestedTooltipsHoverObserver;
+
 /// Setup hooks so that interactions will work
-/// I do not clean up the observers if the component is removed
-/// I only anticipate this happening with despawn
+/// This is based on resource setting
+/// If setting is changed then an update system will set the correct observers
 fn setup_component_hooks(world: &mut World) {
     world
         .register_component_hooks::<TooltipTermLink>()
         .on_insert(|mut world, HookContext { entity, .. }| {
-            world
-                .commands()
-                .entity(entity)
-                .observe(middle_mouse_spawn)
-                .observe(hover_time_spawn)
-                .observe(hover_cancel_spawn);
+            let config = rq!(world.get_resource::<TooltipConfiguration>());
+
+            match config.activation_method {
+                ActivationMethod::MiddleMouse => {
+                    let middle_observe = Observer::new(middle_mouse_spawn).with_entity(entity);
+                    world
+                        .commands()
+                        .spawn((middle_observe, NestedTooltipsMiddleMouseObserver));
+                }
+                ActivationMethod::Hover { .. } => {
+                    let hover_spawn_observer = Observer::new(hover_time_spawn).with_entity(entity);
+                    let hover_cancel_observer =
+                        Observer::new(hover_cancel_spawn).with_entity(entity);
+
+                    world
+                        .commands()
+                        .spawn((hover_spawn_observer, NestedTooltipsHoverObserver));
+                    world
+                        .commands()
+                        .spawn((hover_cancel_observer, NestedTooltipsHoverObserver));
+                }
+            }
         });
 
     world
         .register_component_hooks::<TooltipTermLinkRecursive>()
         .on_insert(|mut world, HookContext { entity, .. }| {
-            world
-                .commands()
-                .entity(entity)
-                .observe(middle_mouse_spawn)
-                .observe(hover_time_spawn)
-                .observe(hover_cancel_spawn);
+            let config = rq!(world.get_resource::<TooltipConfiguration>());
+
+            match config.activation_method {
+                ActivationMethod::MiddleMouse => {
+                    let middle_observe = Observer::new(middle_mouse_spawn).with_entity(entity);
+                    world
+                        .commands()
+                        .spawn((middle_observe, NestedTooltipsMiddleMouseObserver));
+                }
+                ActivationMethod::Hover { .. } => {
+                    let hover_spawn_observer = Observer::new(hover_time_spawn).with_entity(entity);
+                    let hover_cancel_observer =
+                        Observer::new(hover_cancel_spawn).with_entity(entity);
+
+                    world
+                        .commands()
+                        .spawn((hover_spawn_observer, NestedTooltipsHoverObserver));
+                    world
+                        .commands()
+                        .spawn((hover_cancel_observer, NestedTooltipsHoverObserver));
+                }
+            }
         });
 
     world.register_component_hooks::<Tooltip>().on_insert(
@@ -412,6 +449,36 @@ fn setup_component_hooks(world: &mut World) {
     );
 }
 
+/// Updates the observers to match user settings
+/// this will despawn unused observers
+#[allow(clippy::type_complexity)]
+fn update_settings(
+    config: Res<TooltipConfiguration>,
+    term_links: Query<Entity, Or<(With<TooltipTermLink>, With<TooltipTermLinkRecursive>)>>,
+    mut commands: Commands,
+) {
+    match config.activation_method {
+        ActivationMethod::MiddleMouse => {
+            let mut middle_observe = Observer::new(middle_mouse_spawn);
+            for entity in term_links {
+                middle_observe.watch_entity(entity);
+            }
+            commands.spawn((middle_observe, NestedTooltipsMiddleMouseObserver));
+        }
+        ActivationMethod::Hover { .. } => {
+            let mut hover_spawn_observer = Observer::new(hover_time_spawn);
+            let mut hover_cancel_observer = Observer::new(hover_cancel_spawn);
+
+            for entity in term_links {
+                hover_spawn_observer.watch_entity(entity);
+                hover_cancel_observer.watch_entity(entity);
+            }
+            commands.spawn((hover_spawn_observer, NestedTooltipsHoverObserver));
+            commands.spawn((hover_cancel_observer, NestedTooltipsHoverObserver));
+        }
+    }
+}
+
 #[derive(QueryData)]
 #[query_data(mutable)]
 struct HoverLinkQuery {
@@ -420,7 +487,7 @@ struct HoverLinkQuery {
 }
 
 /// Removes hover timer when user's pointer has left.
-fn hover_cancel_spawn(hover: On<TextHoveredOut>, mut commands: Commands) {
+fn hover_cancel_spawn(hover: On<Pointer<Out>>, mut commands: Commands) {
     r!(commands.get_entity(hover.entity)).remove::<TooltipLinkTimer>();
 }
 
@@ -445,7 +512,6 @@ fn tick_timers(
     mut links_query: Query<SpawnLinksQuery>,
     mut wait_for_query: Query<HoverWaitQuery>,
     time_res: Res<Time>,
-    hover: Option<Res<WasHoveringText>>,
     mut commands: Commands,
 ) {
     for mut links_item in &mut links_query {
@@ -458,16 +524,9 @@ fn tick_timers(
         }
     }
     for mut wait_for_item in &mut wait_for_query {
-        match hover {
-            Some(ref current) if current.entity == wait_for_item.tooltip.entity => {
-                wait_for_item.wait_for.timer.reset();
-            }
-            _ => {
-                wait_for_item.wait_for.timer.tick(time_res.delta());
-                if wait_for_item.wait_for.timer.is_finished() {
-                    c!(commands.get_entity(wait_for_item.entity)).try_despawn();
-                }
-            }
+        wait_for_item.wait_for.timer.tick(time_res.delta());
+        if wait_for_item.wait_for.timer.is_finished() {
+            c!(commands.get_entity(wait_for_item.entity)).try_despawn();
         }
     }
 }
@@ -484,7 +543,6 @@ fn spawn_time_done(
     tooltip_configuration: Res<TooltipConfiguration>,
     mut commands: Commands,
 ) {
-    commands.remove_resource::<WasHoveringText>();
     spawn_tooltip(
         term.term_entity,
         links_query,
@@ -563,7 +621,7 @@ fn hover_despawn(
 /// When user has pressed the middle mouse button on a [`TooltipLink`].
 #[allow(clippy::too_many_arguments)]
 fn middle_mouse_spawn(
-    press: On<TextMiddlePress>,
+    mut press: On<Pointer<Press>>,
     links_query: Query<AnyOf<(&TooltipTermLink, &TooltipTermLinkRecursive)>>,
     existing_tooltips_query: Query<(Entity, &Tooltip)>,
     window_query: Query<&Window>,
@@ -572,19 +630,21 @@ fn middle_mouse_spawn(
     tooltip_configuration: Res<TooltipConfiguration>,
     mut commands: Commands,
 ) {
-    let current_activation = tooltip_configuration.activation_method.clone();
-    if matches!(current_activation, ActivationMethod::MiddleMouse) {
-        spawn_tooltip(
-            press.entity,
-            links_query,
-            existing_tooltips_query,
-            window_query,
-            tooltips_map,
-            tooltip_reference,
-            tooltip_configuration,
-            &mut commands,
-        );
+    // Stop tooltip lock being triggered
+    press.propagate(false);
+    if press.button != PointerButton::Middle {
+        return;
     }
+    spawn_tooltip(
+        press.entity,
+        links_query,
+        existing_tooltips_query,
+        window_query,
+        tooltips_map,
+        tooltip_reference,
+        tooltip_configuration,
+        &mut commands,
+    );
 }
 
 /// Common logic to spawn [`ToolTip`] should be called when activation method has been satisfied

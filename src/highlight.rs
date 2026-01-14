@@ -11,12 +11,10 @@ use bevy_ecs::{
     system::{Commands, Query},
     world::World,
 };
+use bevy_picking::events::{Out, Over, Pointer};
 use tiny_bail::prelude::*;
 
-use crate::{
-    events::TooltipHighlighting,
-    text_observer::{TextHoveredOut, TextHoveredOver},
-};
+use crate::events::TooltipHighlighting;
 
 pub(crate) struct HighlightPlugin;
 
@@ -33,7 +31,7 @@ pub struct TooltipHighlightLink(pub String);
 /// When a [`TooltipHighlightLink`] has been activated and shares the same string with this component
 /// [`TooltipHighlighting`] will be added to this entity.
 #[derive(Debug, Component)]
-pub struct TooltipHighlight(pub String);
+pub struct TooltipHighlight(pub Vec<String>);
 
 /// Highlight specific component hooks
 fn setup_component_hooks(world: &mut World) {
@@ -55,7 +53,7 @@ struct HighlightNodesQuery {
 /// When text that highlights a node is moused over this will add marker components
 /// to the user so they can then apply highlighting logic.
 fn highlight_activate(
-    hover: On<TextHoveredOver>,
+    hover: On<Pointer<Over>>,
     highlight_nodes_link_query: Query<&TooltipHighlightLink>,
     highlight_nodes_query: Query<HighlightNodesQuery>,
     mut commands: Commands,
@@ -64,7 +62,7 @@ fn highlight_activate(
 
     for node in highlight_nodes_query
         .iter()
-        .filter(|x| x.tooltip_highlight.0 == link)
+        .filter(|x| x.tooltip_highlight.0.contains(&link))
     {
         c!(commands.get_entity(node.entity)).insert(TooltipHighlighting);
     }
@@ -73,7 +71,7 @@ fn highlight_activate(
 /// When text that highlights a node is no longer moused over this will remove marker components
 /// the user can then remove highlighting logic.
 fn highlight_deactivate(
-    hover: On<TextHoveredOut>,
+    hover: On<Pointer<Out>>,
     highlight_nodes_link_query: Query<&TooltipHighlightLink>,
     highlight_nodes_query: Query<HighlightNodesQuery, With<TooltipHighlighting>>,
     mut commands: Commands,
@@ -82,7 +80,7 @@ fn highlight_deactivate(
 
     for node in highlight_nodes_query
         .iter()
-        .filter(|x| x.tooltip_highlight.0 == link)
+        .filter(|x| x.tooltip_highlight.0.contains(&link))
     {
         c!(commands.get_entity(node.entity)).remove::<TooltipHighlighting>();
     }
