@@ -148,8 +148,6 @@ use bevy_ecs::{
     world::World,
 };
 
-use bevy_ecs::spawn::SpawnRelated;
-
 use bevy_log::error;
 use bevy_math::{Rect, Vec2};
 use bevy_picking::{
